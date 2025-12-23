@@ -1,0 +1,43 @@
+<div id="modal" class="modal-overlay" onclick="if(event.target == this) this.remove()">
+    <div class="modal-content booking-modal-content" onclick="event.stopPropagation()">
+        <header class="guest-card-header">
+            <div class="avatar-placeholder">👷</div>
+            <div>
+                <h2
+                    style="margin:0; font-size:1.5rem; background: linear-gradient(135deg, #a78bfa, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                    Назначить: {{ target_role }}
+                </h2>
+                <p style="margin:4px 0 0; color:var(--text-muted); font-size:0.9rem;">Номер: {{ nomer.nomer_komnati }}
+                </p>
+            </div>
+            <button class="logout-btn" style="margin-left: auto; background: none; border: none; font-size: 1.5rem;"
+                onclick="document.getElementById('modal').remove()">×</button>
+        </header>
+
+        <div class="guest-content-body">
+            <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
+                hx-on::after-request="document.getElementById('modal').remove()">
+                <div class="input-styled" style="margin-bottom: 1.5rem;">
+                    <label>Выберите сотрудника ({{ target_role }})</label>
+                    <select name="otvetstvenniy" class="status-select"
+                        style="width: 100%; font-size: 1rem; padding: 1rem !important;">
+                        <option value="">Не назначен</option>
+                        {% for s in staff %}
+                        <option value="{{ s.full_name or s.username }}" {% if nomer.otvetstvenniy==(s.full_name or
+                            s.username) %}selected{% endif %}>
+                            {{ s.full_name or s.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="logout-btn" style="flex: 1;"
+                        onclick="document.getElementById('modal').remove()">Отмена</button>
+                    <button type="submit" class="add-btn-premium"
+                        style="flex: 2; justify-content: center;">Подтвердить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

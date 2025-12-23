@@ -1,0 +1,34 @@
+<tr id="staff-{{ s.id }}" hx-get="/staff/{{ s.id }}/details" hx-target="body" hx-swap="beforeend"
+    style="cursor: pointer;">
+    <td>
+        <div class="user-info">
+            <span class="user-avatar">👤</span>
+            <span style="font-weight: 700;">{{ s.username }}</span>
+        </div>
+    </td>
+    <td>{{ s.full_name }}</td>
+    <td>
+        <span
+            class="badge {% if s.role == 'admin' %}badge-danger{% elif s.role == 'moderator' %}badge-primary{% elif s.role == 'worker' %}badge-problem{% elif s.role == 'cleaner' %}badge-success{% else %}badge-success{% endif %}">
+            {% if s.role == 'admin' %}Админ
+            {% elif s.role == 'cleaner' %}Уборщик
+            {% elif s.role == 'worker' %}Рабочий
+            {% elif s.role == 'moderator' %}Модератор
+            {% else %}Персонал{% endif %}
+        </span>
+    </td>
+    <td>
+        {% if s.is_active %}
+        <span class="badge badge-success">Активен</span>
+        {% else %}
+        <span class="badge badge-danger">Заблокирован</span>
+        {% endif %}
+    </td>
+    <td onclick="event.stopPropagation()">
+        <button class="logout-btn" hx-delete="/staff/{{ s.id }}"
+            hx-confirm="Вы уверены, что хотите удалить этого сотрудника?" hx-target="#staff-{{ s.id }}"
+            hx-swap="outerHTML">
+            Удалить
+        </button>
+    </td>
+</tr>

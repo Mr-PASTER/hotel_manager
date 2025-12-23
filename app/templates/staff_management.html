@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Управление персоналом</h1>
+</div>
+
+<div class="content-area">
+    <section class="add-room-section-premium">
+        <form hx-post="/staff" hx-target="#staff-list" hx-swap="beforeend" class="premium-form-inline" id="addStaffForm"
+            hx-on::after-request="this.reset()">
+            <div class="inline-grid">
+                <div class="input-styled full-width-mobile">
+                    <label>Логин</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" name="username" id="newUsername" class="line-editor" placeholder="ivanov"
+                            required style="flex: 1;">
+                        <button type="button" class="btn-base" onclick="copyToClipboard('newUsername')"
+                            title="Копировать" style="padding: 0 10px;">📋</button>
+                    </div>
+                </div>
+                <div class="input-styled full-width-mobile">
+                    <label>Пароль</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="password" name="password" id="newPassword" class="line-editor"
+                            placeholder="••••••••" required style="flex: 1;">
+                        <button type="button" class="btn-base" onclick="copyToClipboard('newPassword')"
+                            title="Копировать" style="padding: 0 10px;">📋</button>
+                    </div>
+                </div>
+                <div class="input-styled">
+                    <label>ФИО</label>
+                    <input type="text" name="full_name" class="line-editor" placeholder="Иванов Иван Иванович" required>
+                </div>
+                <div class="input-styled">
+                    <label>Роль</label>
+                    <select name="role" class="status-select">
+                        <option value="cleaner">Уборщик</option>
+                        <option value="worker">Рабочий (Ремонт)</option>
+                        <option value="moderator">Модератор</option>
+                        <option value="staff">Персонал</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <button type="button" class="btn-base" onclick="generateCredentials()"
+                        style="background: var(--warning); color: white; border: none; font-size: 0.75rem;">Сгенерировать</button>
+                    <button type="submit" class="add-btn-premium">
+                        <span>+</span> Добавить
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+
+
+
+    <div class="table-container-modern">
+        <table class="hotel-table-modern">
+            <thead>
+                <tr>
+                    <th>Логин</th>
+                    <th>ФИО</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="staff-list">
+                {% for s in staff %}
+                {% include "partials/staff_row.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

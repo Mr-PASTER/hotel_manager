@@ -46,10 +46,16 @@
     <!-- 4. Персонал -->
     <td class="col-staff desktop-only">
         {% if nomer.status.value != "Убрана" %}
-        <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML">
-            <input type="text" name="otvetstvenniy" value="{{ nomer.otvetstvenniy or '' }}" placeholder="Сотрудник..."
-                class="line-editor" style="width: 100%; font-size: 0.85rem;" onchange="this.form.requestSubmit()">
-        </form>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">
+                {{ nomer.otvetstvenniy or 'Не назначен' }}
+            </div>
+            <button hx-get="/nomera/{{ nomer.id }}/assign-staff-modal" hx-target="body" hx-swap="beforeend"
+                class="btn-base"
+                style="background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 1px solid rgba(124,58,237,0.2); font-size: 0.75rem; width: 100%;">
+                Назначить
+            </button>
+        </div>
         {% else %}
         <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
         {% endif %}
@@ -78,10 +84,12 @@
                 format_date(nomer.data_viezda) }}</div>
             <div style="margin-top: 4px; color: var(--text-muted); font-weight: 500;">{{ nomer.vremya_zaezda }} — {{
                 nomer.vremya_viezda }}</div>
+            {% if user.role in ['admin', 'moderator'] %}
             <button hx-post="/nomera/{{ nomer.id }}/cancel-reserv" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
                 class="cancel-link"
                 style="color: var(--danger); border: none; background: none; font-size: 0.7rem; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 6px; font-weight: 600;">Удалить
                 бронь</button>
+            {% endif %}
         </div>
         {% else %}
         <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
@@ -96,9 +104,9 @@
             {% elif nomer.zanyat %}
             <span class="badge badge-danger">ЗАНЯТ</span>
             {% elif nomer.status.value == "Требует уборки" %}
-            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">ГРЯЗНО</span>
+            <span class="badge badge-problem">ГРЯЗНО</span>
             {% elif nomer.status.value == "На ремонте" %}
-            <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">РЕМОНТ</span>
+            <span class="badge badge-danger">РЕМОНТ</span>
             {% else %}
             <span class="badge badge-danger">ПАУЗА</span>
             {% endif %}
@@ -108,6 +116,7 @@
     <!-- 8. Действие -->
     <td class="col-action desktop-only">
         <div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+            {% if user.role in ['admin', 'moderator'] %}
             <button class="reserve-btn" {% if not nomer.gotov_k_sdache %}disabled
                 style="opacity:0.25; cursor:not-allowed;" {% endif %} hx-get="/nomera/{{ nomer.id }}/booking-modal"
                 hx-target="body" hx-swap="beforeend">Бронь</button>
@@ -115,6 +124,9 @@
                 hx-confirm="Удалить номер?"
                 style="background: none; border: none; font-size: 1.3rem; cursor: pointer; opacity: 0.4; transition: opacity 0.2s;"
                 onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4">🗑</button>
+            {% else %}
+            <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
+            {% endif %}
         </div>
     </td>
 </tr>

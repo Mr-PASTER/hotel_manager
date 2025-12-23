@@ -2,7 +2,6 @@
 
 {% block content %}
 <link rel="stylesheet" href="/static/css/vendor/flatpickr.min.css">
-<link rel="stylesheet" href="/static/css/vendor/flatpickr.dark.css">
 <script src="/static/js/flatpickr.min.js"></script>
 <script src="/static/js/flatpickr.ru.js"></script>
 
@@ -32,6 +31,7 @@
 
     <!-- Основной контент -->
     <main class="content-area">
+        {% if user.role in ['admin', 'moderator'] %}
         <section class="add-room-section-premium">
             <form hx-post="/nomera" hx-target="#nomer-list-body" hx-swap="innerHTML" class="premium-form-inline"
                 hx-on::after-request="this.reset()">
@@ -57,6 +57,7 @@
                 </div>
             </form>
         </section>
+        {% endif %}
 
         <div class="table-container-modern">
             <table class="hotel-table-modern">

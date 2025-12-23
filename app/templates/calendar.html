@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Include Flatpickr -->
+<link rel="stylesheet" href="/static/css/vendor/flatpickr.min.css">
+<script src="/static/js/flatpickr.min.js"></script>
+<script src="/static/js/flatpickr.ru.js"></script>
+
+<div class="dashboard-header">
+    <h1>Календарь занятости</h1>
+</div>
+
+<div class="content-area">
+    <!-- Top Control Block -->
+    <div class="calendar-controls-premium"
+        style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; background: var(--card-bg); padding: 2rem; border-radius: 28px; border: 1px solid var(--glass-border); box-shadow: var(--shadow-main);">
+        <!-- Month and Year Selection -->
+        <div class="control-section">
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;">
+                Выбор периода</h3>
+            <form action="/calendar" method="get" style="display: flex; gap: 1rem; align-items: center;">
+                <select name="month" class="status-select" style="min-width: 150px; flex: 1;"
+                    onchange="this.form.submit()">
+                    {% for i in range(1, 13) %}
+                    <option value="{{ i }}" {% if i==current_month %}selected{% endif %}>{{ months_names[i-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <select name="year" class="status-select" style="min-width: 100px; flex: 1;"
+                    onchange="this.form.submit()">
+                    {% for y in range(current_year-1, current_year+2) %}
+                    <option value="{{ y }}" {% if y==current_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Date Range Search & Scroll -->
+        <div class="control-section">
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;">
+                Поиск по датам</h3>
+            <div style="display: flex; gap: 1rem; align-items: center;" class="full-width-mobile">
+                <div class="input-styled" style="flex: 1;">
+                    <input type="text" id="calendarRangePicker" class="line-editor"
+                        placeholder="Выберите диапазон для перехода..." style="font-size: 1rem; padding: 0.8rem;">
+                </div>
+                <button type="button" class="add-btn-premium" onclick="scrollToSelectedRange()" style="height: 45px;">
+                    Перейти
+                </button>
+            </div>
+            <div id="selection-status"
+                style="margin-top: 10px; font-size: 0.8rem; color: var(--accent-vibrant); font-weight: 700;"></div>
+        </div>
+    </div>
+
+    <div class="table-container-modern" id="calendarScrollContainer"
+        style="overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 24px; border: 1px solid var(--glass-border);">
+        <table class="hotel-table-modern calendar-table" id="calendarTable">
+            <thead>
+                <tr>
+                    <th
+                        style="position: sticky; left: 0; background: var(--card-bg); z-index: 30; min-width: 100px; border-right: 1px solid var(--glass-border);">
+                        Номер</th>
+                    {% for day in days %}
+                    <th style="min-width: 40px; font-size: 0.75rem; padding: 12px 5px !important;"
+                        class="day-header {% if day.strftime('%Y-%m-%d') == now_date %}today-column{% endif %}"
+                        id="header-{{ day.strftime('%Y-%m-%d') }}" data-date="{{ day.strftime('%Y-%m-%d') }}">
+                        {{ day.strftime('%d') }}<br>
+                        <small style="opacity: 0.6; font-size: 0.6rem;">{{
+                            ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][day.weekday()] }}</small>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in calendar_data %}
+                <tr>
+                    <td
+                        style="position: sticky; left: 0; background: var(--table-row-bg); z-index: 30; border-right: 1px solid var(--glass-border);">
+                        <div class="room-id-badge"
+                            style="min-width: 60px; padding: 0.5rem; background: rgba(124, 58, 237, 0.05);">
+                            <span class="room-id-number" style="font-size: 1.1rem;">{{ item.nomer.nomer_komnati
+                                }}</span>
+                        </div>
+                    </td>
+                    {% for occupied in item.days %}
+                    <td style="padding: 2px !important;"
+                        class="{% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-column{% endif %}">
+                        <div class="calendar-cell {% if occupied %}occupied{% endif %} {% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-cell{% endif %}"
+                            data-date="{{ days[loop.index0].strftime('%Y-%m-%d') }}"
+                            id="cell-{{ item.nomer.id }}-{{ days[loop.index0].strftime('%Y-%m-%d') }}"></div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="calendar-legend"
+        style="margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; align-items: center; background: var(--card-bg); padding: 1.5rem; border-radius: 20px;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="calendar-cell" style="width: 20px; height: 20px;"></div>
+            <span>Свободно</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="calendar-cell occupied" style="width: 20px; height: 20px;"></div>
+            <span>Занято / Бронь</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="calendar-cell selected-day"
+                style="width: 20px; height: 20px; background: rgba(124, 58, 237, 0.4); border: 1px solid var(--accent-vibrant);">
+            </div>
+            <span>Выбранный диапазон</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-table {
+        border-spacing: 2px 4px !important;
+        border-collapse: separate !important;
+        width: max-content;
+    }
+
+    .calendar-cell {
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+    }
+
+    .calendar-cell.occupied {
+        background: linear-gradient(135deg, var(--accent-vibrant) 0%, #ec4899 100%);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+
+    .calendar-cell.selected-day {
+        background: rgba(124, 58, 237, 0.3) !important;
+        border: 1px solid var(--accent-vibrant) !important;
+    }
+
+    .day-header.highlight {
+        color: var(--accent-vibrant);
+        font-weight: 800;
+        background: rgba(124, 58, 237, 0.1);
+        border-radius: 8px;
+    }
+</style>
+
+<script>
+    let selectedStart = null;
+    let selectedEnd = null;
+
+    flatpickr("#calendarRangePicker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        locale: "ru",
+        defaultDate: "{{ now_date }}",
+        onReady: function (selectedDates, dateStr, instance) {
+            // Jump to selected month/year
+            instance.jumpToDate("{{ current_year }}-{{ current_month }}-01");
+
+            // Scroll to today on load
+            const todayHeader = document.getElementById('header-{{ now_date }}');
+            if (todayHeader) {
+                const container = document.getElementById('calendarScrollContainer');
+                const offset = todayHeader.offsetLeft - 150;
+                container.scrollLeft = offset;
+            }
+        },
+        onChange: function (selectedDates, dateStr, instance) {
+            if (selectedDates.length === 2) {
+                selectedStart = instance.formatDate(selectedDates[0], "Y-m-d");
+                selectedEnd = instance.formatDate(selectedDates[1], "Y-m-d");
+                document.getElementById('selection-status').innerText = `Выбрано: ${instance.formatDate(selectedDates[0], "d.m")} - ${instance.formatDate(selectedDates[1], "d.m")}`;
+                highlightRange();
+            }
+        }
+    });
+
+    function highlightRange() {
+        // Очистка
+        document.querySelectorAll('.calendar-cell').forEach(c => c.classList.remove('selected-day'));
+        document.querySelectorAll('.day-header').forEach(h => h.classList.remove('highlight'));
+
+        if (!selectedStart || !selectedEnd) return;
+
+        // Подсветка
+        document.querySelectorAll('.calendar-cell').forEach(c => {
+            const date = c.dataset.date;
+            if (date >= selectedStart && date <= selectedEnd) {
+                c.classList.add('selected-day');
+            }
+        });
+
+        document.querySelectorAll('.day-header').forEach(h => {
+            const date = h.dataset.date;
+            if (date >= selectedStart && date <= selectedEnd) {
+                h.classList.add('highlight');
+            }
+        });
+    }
+
+    function scrollToSelectedRange() {
+        if (!selectedStart) return;
+
+        const header = document.getElementById('header-' + selectedStart);
+        if (header) {
+            const container = document.getElementById('calendarScrollContainer');
+            const offset = header.offsetLeft - 150; // Оставляем небольшой запас слева (после липкого столбца)
+            container.scrollTo({
+                left: offset,
+                behavior: 'smooth'
+            });
+        }
+    }
+</script>
+{% endblock %}

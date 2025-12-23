@@ -47,5 +47,11 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String, nullable=True)
-    role = Column(String, default="staff") # admin, staff
+    role = Column(String, default="staff") # admin, staff, cleaner, worker, moderator
     is_active = Column(Boolean, default=True)
+    
+    # Контактная информация
+    phone = Column(String, nullable=True)
+    telegram_id = Column(String, nullable=True)
+    comment = Column(String, nullable=True)
+

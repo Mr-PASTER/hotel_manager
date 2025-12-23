@@ -14,14 +14,37 @@
     <div class="container">
         {% if user %}
         <div class="user-profile-bar">
-            <div class="user-info">
-                <span class="user-avatar">👤</span>
-                <div class="user-details">
-                    <div class="user-name">{{ user.full_name or user.username }}</div>
-                    <div class="user-role">{{ user.role }}</div>
-                </div>
+            <div class="header-logo"
+                style="flex: 1; font-weight: 800; font-size: 1.2rem; color: var(--accent-vibrant);">
+                HOTEL <span style="color: var(--text-primary)">PRO</span>
             </div>
-            <a href="/logout" class="logout-btn">Выйти</a>
+            <button class="burger-menu" onclick="toggleNav()">☰</button>
+            <div class="nav-links" id="mainNav">
+                <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Главная</a>
+                {% if user.role == 'admin' %}
+                <a href="/calendar" class="nav-link {% if request.url.path == '/calendar' %}active{% endif %}">Календарь
+                    занятости</a>
+                <a href="/staff" class="nav-link {% if request.url.path == '/staff' %}active{% endif %}">Персонал</a>
+                {% endif %}
+            </div>
+
+            <div class="user-control-group"
+                style="display: flex; align-items: center; gap: 1.5rem; flex: 1; justify-content: flex-end;">
+                <div class="user-info">
+                    <span class="user-avatar">👤</span>
+                    <div class="user-details">
+                        <div class="user-name">{{ user.full_name or user.username }}</div>
+                        <div class="user-role">
+                            {% if user.role == 'admin' %}Администратор
+                            {% elif user.role == 'moderator' %}Модератор
+                            {% elif user.role == 'cleaner' %}Уборщик
+                            {% elif user.role == 'worker' %}Рабочий
+                            {% else %}Персонал{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <a href="/logout" class="logout-btn">Выйти</a>
+            </div>
         </div>
         {% endif %}
         {% block content %}{% endblock %}
@@ -72,23 +95,59 @@
             setTheme(savedTheme);
         }
 
-        // Close menu when clicking outside
-        window.addEventListener('click', function (e) {
-            if (!document.querySelector('.theme-switcher-container').contains(e.target)) {
-                document.getElementById('themeMenu').classList.remove('active');
+        function toggleNav() {
+            document.getElementById('mainNav').classList.toggle('active');
+        }
+
+        function copyToClipboard(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.select();
+            el.setSelectionRange(0, 99999); // For mobile
+
+            try {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    const btn = event.currentTarget;
+                    const original = btn.innerText;
+                    btn.innerText = '✅';
+                    setTimeout(() => btn.innerText = original, 1000);
+                });
+            } catch (err) {
+                // Fallback
+                document.execCommand('copy');
             }
-        });
-        // Global utilities
-        window.formatPhone = function (input) {
-            let matrix = "+7 (___) ___-__-__",
-                i = 0,
-                def = matrix.replace(/\D/g, ""),
-                val = input.value.replace(/\D/g, "");
-            if (def.length >= val.length) val = def;
-            input.value = matrix.replace(/./g, function (a) {
-                return /[_\d]/.test(a) && i < val.length ? val.charAt(i++) : i >= val.length ? "" : a
-            });
-        };
+        }
+
+        function formatPhone(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.startsWith('7')) value = value.substring(1);
+            if (value.length > 10) value = value.substring(0, 10);
+
+            let formatted = '+7 ';
+            if (value.length > 0) formatted += '(' + value.substring(0, 3);
+            if (value.length > 3) formatted += ') ' + value.substring(3, 6);
+            if (value.length > 6) formatted += '-' + value.substring(6, 8);
+            if (value.length > 8) formatted += '-' + value.substring(8, 10);
+
+            input.value = formatted;
+        }
+
+        function generateCredentials(userFieldId = 'newUsername', passFieldId = 'newPassword') {
+            const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            const passChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            let user = "";
+            let pass = "";
+            for (let i = 0; i < 8; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
+            for (let i = 0; i < 12; i++) pass += passChars.charAt(Math.floor(Math.random() * passChars.length));
+
+            const userEl = document.getElementById(userFieldId);
+            const passEl = document.getElementById(passFieldId);
+            if (userEl) userEl.value = user;
+            if (passEl) {
+                passEl.value = pass;
+                passEl.type = 'text';
+            }
+        }
 
         window.initFlatpickrForRoom = function (id) {
             flatpickr("#picker-" + id, {
@@ -96,6 +155,15 @@
                 dateFormat: "Y-m-d",
                 minDate: "today",
                 locale: "ru",
+                onReady: function (selectedDates, dateStr, instance) {
+                    const today = instance.days.querySelector(".flatpickr-day.today");
+                    if (today) {
+                        today.style.borderColor = "var(--accent-vibrant)";
+                        today.style.borderWidth = "2px";
+                        today.style.borderStyle = "solid";
+                        today.style.borderRadius = "50%";
+                    }
+                },
                 onChange: function (selectedDates, dateStr, instance) {
                     if (selectedDates.length === 2) {
                         const start = document.getElementById('start-' + id);

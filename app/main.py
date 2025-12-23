@@ -181,6 +181,9 @@ async def create_nomer(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(login_required)
 ):
+    if user.role not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
     new_nomer = Nomer(
         nomer_komnati=nomer_komnati,
         kolvo_komnat=kolvo_komnat,
@@ -273,6 +276,8 @@ async def reserve_nomer(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(login_required)
 ):
+    if user.role not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
     nomer = await db.get(Nomer, nomer_id)
     if not nomer:
         raise HTTPException(status_code=404, detail="Nomer not found")
@@ -313,6 +318,9 @@ async def guest_details(request: Request, nomer_id: int, back: bool = False, db:
 
 @app.post("/nomera/{nomer_id}/cancel-reserv", response_class=HTMLResponse)
 async def cancel_reserve(request: Request, nomer_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(login_required)):
+    if user.role not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
     result = await db.execute(select(Nomer).where(Nomer.id == nomer_id))
     nomer = result.scalar_one_or_none()
     
@@ -335,6 +343,206 @@ async def cancel_reserve(request: Request, nomer_id: int, db: AsyncSession = Dep
 
 @app.delete("/nomera/{nomer_id}", response_class=HTMLResponse)
 async def delete_nomer(nomer_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(login_required)):
+    if user.role not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
     await db.execute(delete(Nomer).where(Nomer.id == nomer_id))
     await db.commit()
     return HTMLResponse(content="")
+
+# --- Управление персоналом ---
+
+@app.get("/staff", response_class=HTMLResponse)
+async def staff_list(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
+    
+    result = await db.execute(select(User).order_by(User.id))
+    staff = result.scalars().all()
+    return templates.TemplateResponse("staff_management.html", {
+        "request": request,
+        "staff": staff,
+        "user": user
+    })
+
+@app.post("/staff", response_class=HTMLResponse)
+async def add_staff(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    full_name: str = Form(...),
+    role: str = Form("staff"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=403)
+    
+    new_user = User(
+        username=username,
+        hashed_password=get_password_hash(password),
+        full_name=full_name,
+        role=role
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    
+    return templates.TemplateResponse("partials/staff_row.html", {
+        "request": request,
+        "s": new_user
+    })
+
+@app.delete("/staff/{user_id}", response_class=HTMLResponse)
+async def delete_staff(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=403)
+    
+    if user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+        
+    await db.execute(delete(User).where(User.id == user_id))
+    await db.commit()
+    return HTMLResponse(content="")
+
+@app.get("/staff/{user_id}/details", response_class=HTMLResponse)
+async def staff_details_modal(
+    request: Request,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=403)
+    
+    target_user = await db.get(User, user_id)
+    return templates.TemplateResponse("partials/staff_details_modal.html", {
+        "request": request,
+        "s": target_user
+    })
+
+@app.post("/staff/{user_id}/update", response_class=HTMLResponse)
+async def update_staff(
+    request: Request,
+    user_id: int,
+    username: str = Form(None),
+    password: str = Form(None),
+    full_name: str = Form(None),
+    role: str = Form(None),
+    phone: str = Form(None),
+    telegram_id: str = Form(None),
+    comment: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=403)
+    
+    target_user = await db.get(User, user_id)
+    if username: target_user.username = username
+    if password: target_user.hashed_password = get_password_hash(password)
+    if full_name: target_user.full_name = full_name
+    if role: target_user.role = role
+    if phone is not None: target_user.phone = phone
+    if telegram_id is not None: target_user.telegram_id = telegram_id
+    if comment is not None: target_user.comment = comment
+    
+    await db.commit()
+    await db.refresh(target_user)
+    
+    return templates.TemplateResponse("partials/staff_row.html", {
+        "request": request,
+        "s": target_user
+    })
+
+# --- Календарь занятости ---
+
+@app.get("/calendar", response_class=HTMLResponse)
+async def occupancy_calendar(
+    request: Request,
+    month: int = None,
+    year: int = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    if user.role != "admin":
+        return RedirectResponse(url="/", status_code=303)
+    
+    now = datetime.now()
+    if not month: month = now.month
+    if not year: year = now.year
+    
+    # Определяем первый и последний день месяца
+    import calendar as py_calendar
+    first_day = datetime(year, month, 1).date()
+    last_day_num = py_calendar.monthrange(year, month)[1]
+    
+    days = [first_day + timedelta(days=i) for i in range(last_day_num)]
+    
+    result = await db.execute(select(Nomer).order_by(Nomer.nomer_komnati))
+    nomera = result.scalars().all()
+    
+    calendar_data = []
+    for nomer in nomera:
+        days_status = []
+        for day in days:
+            occupied = False
+            if nomer.data_zaezda and nomer.data_viezda:
+                try:
+                    start = datetime.strptime(nomer.data_zaezda, "%Y-%m-%d").date()
+                    end = datetime.strptime(nomer.data_viezda, "%Y-%m-%d").date()
+                    if start <= day <= end:
+                        occupied = True
+                except:
+                    pass
+            days_status.append(occupied)
+        calendar_data.append({
+            "nomer": nomer,
+            "days": days_status
+        })
+        
+    months_names = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", 
+                    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+        
+    return templates.TemplateResponse("calendar.html", {
+        "request": request,
+        "days": days,
+        "calendar_data": calendar_data,
+        "user": user,
+        "current_month": month,
+        "current_year": year,
+        "months_names": months_names,
+        "now_date": now.strftime("%Y-%m-%d")
+    })
+
+@app.get("/nomera/{nomer_id}/assign-staff-modal", response_class=HTMLResponse)
+async def assign_staff_modal(
+    request: Request,
+    nomer_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(login_required)
+):
+    nomer = await db.get(Nomer, nomer_id)
+    
+    # Определяем нужную роль в зависимости от статуса номера
+    target_role = "cleaner" if nomer.status == StatusNomera.TREBUET_UBORKI else "worker"
+    
+    result = await db.execute(select(User).where(User.role == target_role))
+    available_staff = result.scalars().all()
+    
+    return templates.TemplateResponse("partials/assign_staff_modal.html", {
+        "request": request,
+        "nomer": nomer,
+        "staff": available_staff,
+        "target_role": "Уборка" if target_role == "cleaner" else "Ремонт"
+    })
+
+
