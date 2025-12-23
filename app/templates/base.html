@@ -14,36 +14,45 @@
     <div class="container">
         {% if user %}
         <div class="user-profile-bar">
-            <div class="header-logo"
-                style="flex: 1; font-weight: 800; font-size: 1.2rem; color: var(--accent-vibrant);">
-                HOTEL <span style="color: var(--text-primary)">PRO</span>
-            </div>
-            <button class="burger-menu" onclick="toggleNav()">☰</button>
-            <div class="nav-links" id="mainNav">
-                <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Главная</a>
-                {% if user.role == 'admin' %}
-                <a href="/calendar" class="nav-link {% if request.url.path == '/calendar' %}active{% endif %}">Календарь
-                    занятости</a>
-                <a href="/staff" class="nav-link {% if request.url.path == '/staff' %}active{% endif %}">Персонал</a>
-                {% endif %}
+            <!-- Mobile Toggle / Logo Container -->
+            <div class="mobile-header-group" style="display: contents;">
+                <div class="header-logo"
+                    style="font-weight: 800; font-size: 1.2rem; color: var(--accent-vibrant); white-space: nowrap;">
+                    ГОСТЕВОЙ <span style="color: var(--text-primary)">ФОНД</span>
+                </div>
+                <button class="burger-menu" onclick="toggleNav()">☰</button>
             </div>
 
-            <div class="user-control-group"
-                style="display: flex; align-items: center; gap: 1.5rem; flex: 1; justify-content: flex-end;">
-                <div class="user-info">
-                    <span class="user-avatar">👤</span>
-                    <div class="user-details">
-                        <div class="user-name">{{ user.full_name or user.username }}</div>
-                        <div class="user-role">
-                            {% if user.role == 'admin' %}Администратор
-                            {% elif user.role == 'moderator' %}Модератор
-                            {% elif user.role == 'cleaner' %}Уборщик
-                            {% elif user.role == 'worker' %}Рабочий
-                            {% else %}Персонал{% endif %}
+            <!-- Desktop: Centered Nav. Mobile: Dropdown -->
+            <div class="nav-container" id="mainNav">
+                <div class="nav-links">
+                    <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Главная</a>
+                    {% if user.role == 'admin' %}
+                    <a href="/calendar"
+                        class="nav-link {% if request.url.path == '/calendar' %}active{% endif %}">Календарь
+                        занятости</a>
+                    <a href="/staff"
+                        class="nav-link {% if request.url.path == '/staff' %}active{% endif %}">Персонал</a>
+                    {% endif %}
+                </div>
+
+                <!-- Auth / User Info Block -->
+                <div class="user-control-group">
+                    <div class="user-info">
+                        <span class="user-avatar">👤</span>
+                        <div class="user-details">
+                            <div class="user-name">{{ user.full_name or user.username }}</div>
+                            <div class="user-role">
+                                {% if user.role == 'admin' %}Администратор
+                                {% elif user.role == 'moderator' %}Модератор
+                                {% elif user.role == 'cleaner' %}Уборщик
+                                {% elif user.role == 'worker' %}Рабочий
+                                {% else %}Персонал{% endif %}
+                            </div>
                         </div>
                     </div>
+                    <a href="/logout" class="logout-btn">Выйти</a>
                 </div>
-                <a href="/logout" class="logout-btn">Выйти</a>
             </div>
         </div>
         {% endif %}

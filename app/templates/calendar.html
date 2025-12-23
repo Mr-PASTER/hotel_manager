@@ -88,7 +88,9 @@
                         class="{% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-column{% endif %}">
                         <div class="calendar-cell {% if occupied %}occupied{% endif %} {% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-cell{% endif %}"
                             data-date="{{ days[loop.index0].strftime('%Y-%m-%d') }}"
-                            id="cell-{{ item.nomer.id }}-{{ days[loop.index0].strftime('%Y-%m-%d') }}"></div>
+                            id="cell-{{ item.nomer.id }}-{{ days[loop.index0].strftime('%Y-%m-%d') }}" {% if occupied %}
+                            hx-get="/nomera/{{ item.nomer.id }}/guest-details" hx-target="body" hx-swap="beforeend"
+                            style="cursor: pointer;" {% endif %}></div>
                     </td>
                     {% endfor %}
                 </tr>
@@ -118,29 +120,55 @@
 
 <style>
     .calendar-table {
-        border-spacing: 2px 4px !important;
-        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        /* Touch cells */
+        border-collapse: collapse !important;
+        /* Merge borders */
         width: max-content;
     }
 
     .calendar-cell {
-        width: 36px;
-        height: 36px;
+        width: 45px;
+        /* Wider rectangular cells */
+        height: 32px;
+        /* Standard height */
         background: rgba(255, 255, 255, 0.03);
-        border-radius: 8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid transparent;
+        border-radius: 0;
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.02);
+        /* Very subtle separator */
+        margin: 0;
+        box-sizing: border-box;
+        /* Include border in w/h */
     }
 
     .calendar-cell.occupied {
         background: linear-gradient(135deg, var(--accent-vibrant) 0%, #ec4899 100%);
-        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+        box-shadow: none;
+        border-color: rgba(255, 255, 255, 0.1);
     }
 
     .calendar-cell.selected-day {
-        background: rgba(124, 58, 237, 0.3) !important;
-        border: 1px solid var(--accent-vibrant) !important;
+        /* No background change to preserve occupied color */
+        position: relative;
+        z-index: 20;
     }
+
+    /* Use pseudo-element for selection border to sit on top without affecting background */
+    .calendar-cell.selected-day::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-top: 2px solid var(--accent-vibrant);
+        border-bottom: 2px solid var(--accent-vibrant);
+        pointer-events: none;
+    }
+
+    /* First and last of range could have side borders if I could target them, 
+       but for now just top/bottom lines is good for "range". */
 
     .day-header.highlight {
         color: var(--accent-vibrant);
@@ -158,7 +186,7 @@
         mode: "range",
         dateFormat: "Y-m-d",
         locale: "ru",
-        defaultDate: "{{ now_date }}",
+        // defaultDate removed to keep empty on load
         onReady: function (selectedDates, dateStr, instance) {
             // Jump to selected month/year
             instance.jumpToDate("{{ current_year }}-{{ current_month }}-01");

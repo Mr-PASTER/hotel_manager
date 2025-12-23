@@ -17,7 +17,7 @@
     <td class="col-status desktop-only">
         <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML">
             <select name="status" onchange="this.form.requestSubmit()"
-                class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}">
+                class="status-select {% if nomer.status.value == 'Убрана' %}status-clean{% elif nomer.status.value == 'На ремонте' %}status-repair{% else %}status-problem{% endif %}">
                 <option value="Убрана" {% if nomer.status.value=="Убрана" %}selected{% endif %}>Убрана</option>
                 <option value="Требует уборки" {% if nomer.status.value=="Требует уборки" %}selected{% endif %}>Грязная
                 </option>

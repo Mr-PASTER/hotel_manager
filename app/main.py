@@ -161,7 +161,8 @@ async def dashboard(
         return templates.TemplateResponse("partials/nomer_list.html", {
             "request": request, 
             "nomera": nomera,
-            "StatusNomera": StatusNomera
+            "StatusNomera": StatusNomera,
+            "user": user
         })
 
     return templates.TemplateResponse("index.html", {
@@ -191,13 +192,15 @@ async def create_nomer(
     )
     db.add(new_nomer)
     await db.commit()
+    await db.refresh(user)
     
     result = await db.execute(select(Nomer).order_by(Nomer.nomer_komnati))
     nomera = result.scalars().all()
     return templates.TemplateResponse("partials/nomer_list.html", {
         "request": request, 
         "nomera": nomera,
-        "StatusNomera": StatusNomera
+        "StatusNomera": StatusNomera,
+        "user": user
     })
 
 @app.post("/nomera/{nomer_id}/update", response_class=HTMLResponse)
@@ -214,7 +217,11 @@ async def update_nomer(
     result = await db.execute(select(Nomer).where(Nomer.id == nomer_id))
     nomer = result.scalar_one_or_none()
     
-    if status: nomer.status = status
+    if status: 
+        nomer.status = status
+        # При смене статуса сбрасываем назначенного сотрудника, как просил пользователь
+        if status in [StatusNomera.CHISTO, StatusNomera.REMONT, StatusNomera.TREBUET_UBORKI]:
+            nomer.otvetstvenniy = None
     if otvetstvenniy is not None: nomer.otvetstvenniy = otvetstvenniy
     
     if zanyat is not None:
@@ -233,10 +240,12 @@ async def update_nomer(
     
     await db.commit()
     await db.refresh(nomer)
+    await db.refresh(user)
     return templates.TemplateResponse("partials/nomer_row.html", {
         "request": request, 
         "nomer": nomer,
-        "StatusNomera": StatusNomera
+        "StatusNomera": StatusNomera,
+        "user": user
     })
 
 @app.get("/nomera/{nomer_id}/details", response_class=HTMLResponse)
@@ -299,11 +308,13 @@ async def reserve_nomer(
     
     await db.commit()
     await db.refresh(nomer)
+    await db.refresh(user)
     
     return templates.TemplateResponse("partials/nomer_row.html", {
         "request": request, 
         "nomer": nomer,
-        "StatusNomera": StatusNomera
+        "StatusNomera": StatusNomera,
+        "user": user
     })
 
 @app.get("/nomera/{nomer_id}/guest-details", response_class=HTMLResponse)
@@ -339,7 +350,13 @@ async def cancel_reserve(request: Request, nomer_id: int, db: AsyncSession = Dep
     
     await db.commit()
     await db.refresh(nomer)
-    return templates.TemplateResponse("partials/nomer_row.html", {"request": request, "nomer": nomer, "StatusNomera": StatusNomera})
+    await db.refresh(user)
+    return templates.TemplateResponse("partials/nomer_row.html", {
+        "request": request, 
+        "nomer": nomer, 
+        "StatusNomera": StatusNomera,
+        "user": user
+    })
 
 @app.delete("/nomera/{nomer_id}", response_class=HTMLResponse)
 async def delete_nomer(nomer_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(login_required)):
