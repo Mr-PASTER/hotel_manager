@@ -1,0 +1,120 @@
+<tr id="nomer-{{ nomer.id }}">
+    <!-- 1. Номер -->
+    <td class="col-room">
+        <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+            <div class="room-id-badge" hx-get="/nomera/{{ nomer.id }}/details" hx-target="body" hx-swap="beforeend">
+                <span class="room-id-label">Номер</span>
+                <span class="room-id-number">{{ nomer.nomer_komnati }}</span>
+            </div>
+            <div
+                style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-top: 6px; white-space: nowrap; text-align: center;">
+                {{ nomer.kolvo_komnat }}К / {{ nomer.kolvo_krovatey }}КР
+            </div>
+        </div>
+    </td>
+
+    <!-- 2. Статус (Desktop) -->
+    <td class="col-status desktop-only">
+        <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML">
+            <select name="status" onchange="this.form.requestSubmit()"
+                class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}">
+                <option value="Убрана" {% if nomer.status.value=="Убрана" %}selected{% endif %}>Убрана</option>
+                <option value="Требует уборки" {% if nomer.status.value=="Требует уборки" %}selected{% endif %}>Грязная
+                </option>
+                <option value="На ремонте" {% if nomer.status.value=="На ремонте" %}selected{% endif %}>Ремонт</option>
+            </select>
+        </form>
+    </td>
+
+    <!-- 3. Состояние (Mobile Only) -->
+    <td class="col-condition mobile-only">
+        <div style="text-align: center; font-weight: 700; font-size: 0.85rem;">
+            {% if nomer.gotov_k_sdache %}
+            <span style="color: #10b981;">Готов</span>
+            {% elif nomer.zanyat %}
+            <span style="color: #ef4444;">Занят</span>
+            {% elif nomer.status.value == "Требует уборки" %}
+            <span style="color: #f59e0b;">Не убрана</span>
+            {% elif nomer.status.value == "На ремонте" %}
+            <span style="color: #f43f5e;">Сломана</span>
+            {% else %}
+            <span style="color: var(--text-muted);">—</span>
+            {% endif %}
+        </div>
+    </td>
+
+    <!-- 4. Персонал -->
+    <td class="col-staff desktop-only">
+        {% if nomer.status.value != "Убрана" %}
+        <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML">
+            <input type="text" name="otvetstvenniy" value="{{ nomer.otvetstvenniy or '' }}" placeholder="Сотрудник..."
+                class="line-editor" style="width: 100%; font-size: 0.85rem;" onchange="this.form.requestSubmit()">
+        </form>
+        {% else %}
+        <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
+        {% endif %}
+    </td>
+
+    <!-- 5. Жилец -->
+    <td class="col-tenant desktop-only">
+        {% if nomer.zanyat %}
+        <div class="tenant-plate" hx-get="/nomera/{{ nomer.id }}/guest-details" hx-target="body" hx-swap="beforeend"
+            style="cursor: pointer;">
+            <span class="tenant-plate-label">Жилец</span>
+            <span class="tenant-plate-name">👤 {{ nomer.fio_zhilca }}</span>
+        </div>
+        {% else %}
+        <span
+            style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; padding-left: 10px;">Свободен</span>
+        {% endif %}
+    </td>
+
+    <!-- 6. Бронирование -->
+    <td class="col-booking desktop-only">
+        {% if nomer.zarezervirovan %}
+        <div
+            style="font-size: 0.75rem; background: rgba(124, 58, 237, 0.08); padding: 10px; border-radius: 12px; border: 1px solid rgba(124,58,237,0.1);">
+            <div style="color: var(--accent-vibrant); font-weight: 700;">📅 {{ format_date(nomer.data_zaezda) }} — {{
+                format_date(nomer.data_viezda) }}</div>
+            <div style="margin-top: 4px; color: var(--text-muted); font-weight: 500;">{{ nomer.vremya_zaezda }} — {{
+                nomer.vremya_viezda }}</div>
+            <button hx-post="/nomera/{{ nomer.id }}/cancel-reserv" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
+                class="cancel-link"
+                style="color: var(--danger); border: none; background: none; font-size: 0.7rem; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 6px; font-weight: 600;">Удалить
+                бронь</button>
+        </div>
+        {% else %}
+        <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
+        {% endif %}
+    </td>
+
+    <!-- 7. Состояние (Desktop) -->
+    <td class="col-condition desktop-only">
+        <div style="display: flex; justify-content: center;">
+            {% if nomer.gotov_k_sdache %}
+            <span class="badge badge-success" style="box-shadow: 0 0 15px rgba(16,185,129,0.2);">ГОТОВ</span>
+            {% elif nomer.zanyat %}
+            <span class="badge badge-danger">ЗАНЯТ</span>
+            {% elif nomer.status.value == "Требует уборки" %}
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">ГРЯЗНО</span>
+            {% elif nomer.status.value == "На ремонте" %}
+            <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">РЕМОНТ</span>
+            {% else %}
+            <span class="badge badge-danger">ПАУЗА</span>
+            {% endif %}
+        </div>
+    </td>
+
+    <!-- 8. Действие -->
+    <td class="col-action desktop-only">
+        <div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+            <button class="reserve-btn" {% if not nomer.gotov_k_sdache %}disabled
+                style="opacity:0.25; cursor:not-allowed;" {% endif %} hx-get="/nomera/{{ nomer.id }}/booking-modal"
+                hx-target="body" hx-swap="beforeend">Бронь</button>
+            <button hx-delete="/nomera/{{ nomer.id }}" hx-target="#nomer-{{ nomer.id }}" hx-swap="delete"
+                hx-confirm="Удалить номер?"
+                style="background: none; border: none; font-size: 1.3rem; cursor: pointer; opacity: 0.4; transition: opacity 0.2s;"
+                onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4">🗑</button>
+        </div>
+    </td>
+</tr>

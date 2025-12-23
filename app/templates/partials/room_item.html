@@ -1,0 +1,54 @@
+<div class="room-card" id="room-{{ room.id }}">
+    <div class="room-card-header">
+        <span class="room-badge">Room {{ room.room_number }}</span>
+        <div
+            class="ready-indicator {{ 'ready' if room.status.value == 'Clean' and not room.is_occupied else 'not-ready' }}">
+            {{ 'READY TO RENT' if (room.status.value == 'Clean' and not room.is_occupied) else 'NOT READY' }}
+        </div>
+        <button class="delete-btn-icon" hx-delete="/rooms/{{ room.id }}" hx-target="#room-{{ room.id }}"
+            hx-swap="delete" hx-confirm="Delete room {{ room.room_number }}?">×</button>
+    </div>
+
+    <div class="room-details">
+        <div class="detail-item">
+            <span class="label">Config:</span>
+            <span class="value">{{ room.room_count }} Room(s), {{ room.bed_count }} Bed(s)</span>
+        </div>
+
+        <!-- Occupancy Section -->
+        <div class="status-section">
+            <form hx-post="/rooms/{{ room.id }}/occupy" hx-target="#room-{{ room.id }}" hx-swap="outerHTML">
+                <div class="toggle-group">
+                    <label class="switch">
+                        <input type="checkbox" name="is_occupied" {% if room.is_occupied %}checked{% endif %}
+                            onchange="this.form.requestSubmit()">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>{{ 'Occupied' if room.is_occupied else 'Vacant' }}</span>
+                </div>
+                {% if room.is_occupied %}
+                <input type="text" name="guest_name" value="{{ room.guest_name or '' }}" placeholder="Guest Name"
+                    class="inline-input" onchange="this.form.requestSubmit()">
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Cleaning/Repair Section -->
+        <div class="status-section">
+            <form hx-post="/rooms/{{ room.id }}/update-status" hx-target="#room-{{ room.id }}" hx-swap="outerHTML">
+                <select name="status" onchange="this.form.requestSubmit()"
+                    class="status-select {{ room.status.value.lower().replace(' ', '-') }}">
+                    <option value="Clean" {% if room.status.value=='Clean' %}selected{% endif %}>Clean</option>
+                    <option value="Needs Cleaning" {% if room.status.value=='Needs Cleaning' %}selected{% endif %}>Needs
+                        Cleaning</option>
+                    <option value="Under Repair" {% if room.status.value=='Under Repair' %}selected{% endif %}>Under
+                        Repair</option>
+                </select>
+                {% if room.status.value != 'Clean' %}
+                <input type="text" name="staff_assigned" value="{{ room.staff_assigned or '' }}"
+                    placeholder="Assign staff..." class="inline-input" onchange="this.form.requestSubmit()">
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>

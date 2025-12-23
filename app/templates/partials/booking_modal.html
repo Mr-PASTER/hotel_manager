@@ -1,0 +1,72 @@
+<div id="booking-modal-{{ nomer.id }}" class="modal-overlay"
+    style="display:flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 3005;">
+    <div class="modal-content booking-modal-content">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 2rem;">
+            <div class="room-id-badge" style="background: var(--accent-vibrant); border: none; transform: scale(1.1);">
+                <span class="room-id-label" style="color: rgba(255,255,255,0.7);">Номер</span>
+                <span class="room-id-number" style="color: white;">{{ nomer.nomer_komnati }}</span>
+            </div>
+            <h3 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">Новое бронирование
+            </h3>
+        </div>
+        <div id="booking-error"
+            style="color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 10px; margin-bottom: 1rem; display: none; font-weight: 700; text-align: center;">
+        </div>
+
+        <form hx-post="/nomera/{{ nomer.id }}/reserv" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
+            hx-on::after-request="if(event.detail.xhr.status === 200) { this.closest('.modal-overlay').remove(); } else { document.getElementById('booking-error').textContent = 'Ошибка! Проверьте заполнение всех полей'; document.getElementById('booking-error').style.display = 'block'; }">
+            <div class="bron-grid">
+                <div class="input-styled">
+                    <label>Период проживания</label>
+                    <input type="text" id="picker-{{ nomer.id }}" placeholder="Выберите даты..." required
+                        class="line-editor" style="width: 100%; cursor: pointer;" readonly>
+                    <!-- Используем обычные инпуты с display:none для корректной валидации браузером -->
+                    <input type="text" name="data_zaezda" id="start-{{ nomer.id }}" required style="display:none;">
+                    <input type="text" name="data_viezda" id="end-{{ nomer.id }}" required style="display:none;">
+                </div>
+                <div class="input-styled">
+                    <label>Время (Заезд / Выезд)</label>
+                    <div class="time-row" style="display: flex; gap: 10px;">
+                        <input type="time" name="vremya_zaezda" value="14:00" class="time-input"
+                            style="flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: white;">
+                        <input type="time" name="vremya_viezda" value="12:00" class="time-input"
+                            style="flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: white;">
+                    </div>
+                </div>
+                <div class="input-styled"
+                    style="grid-column: span 2; background: rgba(124, 58, 237, 0.05); padding: 20px; border-radius: 20px; border: 1px solid rgba(124, 58, 237, 0.1);">
+                    <label style="color: var(--accent-vibrant); font-weight: 800; margin-bottom: 10px;">ФИО
+                        Бронирующего</label>
+                    <input type="text" name="fio_bron" placeholder="Имя Фамилия Отчество" required class="line-editor"
+                        style="width: 100%; font-weight: 700; font-size: 1.4rem; border-bottom-width: 3px;">
+                </div>
+                <div class="input-styled">
+                    <label>Номер телефона</label>
+                    <input type="tel" name="telefon" id="phone-{{ nomer.id }}" placeholder="+7 (___) ___-__-__" required
+                        class="line-editor" style="width: 100%;" oninput="formatPhone(this)">
+                </div>
+                <div class="input-styled">
+                    <label>Доп. гостей</label>
+                    <input type="number" name="dop_gosti" value="0" min="0" class="line-editor" style="width: 100%;">
+                </div>
+                <div class="input-styled" style="grid-column: span 2;">
+                    <label>Комментарий / Пожелания</label>
+                    <input type="text" name="kommentariy" placeholder="Например: нужна детская кроватка"
+                        class="line-editor" style="width: 100%;">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1.25rem; margin-top: 3rem;">
+                <button type="button" class="filter-btn"
+                    style="padding: 14px 28px; border-radius: 14px; font-weight: 700;"
+                    onclick="this.closest('.modal-overlay').remove()">Отмена</button>
+                <button type="submit" class="add-btn-premium"
+                    style="padding: 14px 35px; border-radius: 14px;">Забронировать</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    if (window.initFlatpickrForRoom) {
+        window.initFlatpickrForRoom('{{ nomer.id }}');
+    }
+</script>

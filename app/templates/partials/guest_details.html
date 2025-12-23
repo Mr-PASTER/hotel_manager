@@ -1,0 +1,127 @@
+<div id="guest-details-modal" class="modal-overlay"
+    style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 3000;">
+    <div class="modal-content guest-modal-content" style="width: 550px; padding: 2.5rem; border-radius: 28px;">
+        <div class="guest-info-card">
+            <div class="guest-card-header" style="display: flex; align-items: center; gap: 20px; margin-bottom: 2rem;">
+                <div class="avatar-placeholder"
+                    style="font-size: 3rem; background: rgba(124, 58, 237, 0.1); width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
+                    👤</div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">{{
+                        nomer.fio_zhilca or 'Имя не указано' }}</h2>
+                    <div style="color: var(--text-muted); font-size: 1rem; font-weight: 700; margin-top: 5px;">
+                        Номер <span style="color: var(--accent-vibrant); font-size: 1.8rem; margin-left: 5px;">{{
+                            nomer.nomer_komnati }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="guest-content-body">
+                <div class="bron-grid">
+                    <div class="data-item clickable-block" onclick="copyToClipboard('{{ nomer.telefon }}', this)"
+                        style="cursor: pointer; position: relative; grid-column: span 2; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border);"
+                        title="Нажмите, чтобы скопировать">
+                        <span class="data-label"
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 5px;">Контактный
+                            телефон (нажмите для копирования)</span>
+                        <span class="data-value" id="phone-copy-text"
+                            style="color: var(--accent-vibrant); font-weight: 800; font-size: 1.25rem; display: block;">
+                            {{ nomer.telefon or 'Не указан' }}
+                        </span>
+                        <div class="copy-tooltip">Скопировано!</div>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label"
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Дополнительные
+                            гости</span>
+                        <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">+{{
+                            nomer.dop_gosti or 0 }} чел.</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label"
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Дата
+                            заезда</span>
+                        <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">{{
+                            format_date(nomer.data_zaezda) }} <span style="font-size: 0.8rem; opacity: 0.7;">{{
+                                nomer.vremya_zaezda }}</span></span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label"
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Дата
+                            выезда</span>
+                        <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">{{
+                            format_date(nomer.data_viezda) }} <span style="font-size: 0.8rem; opacity: 0.7;">{{
+                                nomer.vremya_viezda }}</span></span>
+                    </div>
+                    <div class="data-item" style="grid-column: span 2;">
+                        <span class="data-label"
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Комментарий
+                            к проживанию / брони</span>
+                        <span class="data-value"
+                            style="display: block; font-style: italic; font-weight: 400; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 10px;">
+                            {{ nomer.kommentariy or 'Особых комментариев нет' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    {% if show_back %}
+                    <button class="filter-btn" hx-get="/nomera/{{ nomer.id }}/details"
+                        hx-target="closest .modal-overlay" hx-swap="outerHTML"
+                        style="background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); font-weight: 800; border: 1px solid var(--accent-vibrant); padding: 12px 24px; border-radius: 14px; cursor: pointer;">
+                        ← Назад к номеру
+                    </button>
+                    {% endif %}
+
+                    {% if not show_back %}
+                    <button class="filter-btn"
+                        style="background: rgba(255,255,255,0.05); padding: 12px 24px; border-radius: 14px; font-weight: 700;"
+                        onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
+                    {% endif %}
+
+                    <button class="add-btn-premium" hx-post="/nomera/{{ nomer.id }}/update"
+                        hx-vals='{"zanyat": "false"}' hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
+                        hx-on::after-request="document.getElementById('guest-details-modal').remove()"
+                        style="padding: 12px 24px; border-radius: 14px; background: var(--danger); border: none; color: white; font-weight: 800; cursor: pointer;">
+                        Выселить гостя
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (typeof copyToClipboard !== 'function') {
+        window.copyToClipboard = function (text, element) {
+            if (!text || text === 'None') return;
+            navigator.clipboard.writeText(text).then(() => {
+                const tooltip = element.querySelector('.copy-tooltip');
+                tooltip.style.opacity = '1';
+                tooltip.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.transform = 'translateY(0)';
+                }, 2000);
+            });
+        }
+    }
+</script>
+
+<style>
+    .copy-tooltip {
+        position: absolute;
+        top: -20px;
+        right: 10px;
+        background: #10b981;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+        font-weight: 800;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+</style>

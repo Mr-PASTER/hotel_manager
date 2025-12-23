@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/css/vendor/flatpickr.min.css">
+<link rel="stylesheet" href="/static/css/vendor/flatpickr.dark.css">
+<script src="/static/js/flatpickr.min.js"></script>
+<script src="/static/js/flatpickr.ru.js"></script>
+
+<header class="dashboard-header">
+    <h1>Система управления отелем</h1>
+</header>
+
+<div class="main-layout">
+    <!-- Левая панель фильтров -->
+    <aside class="filters-sidebar">
+        <h3>Применить фильтр</h3>
+        <div class="filter-group">
+            <button hx-get="/?filter=all" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if not current_filter or current_filter == 'all' }}">Все номера</button>
+            <button hx-get="/?filter=ready" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if current_filter == 'ready' }}">Готовы к сдаче</button>
+            <button hx-get="/?filter=reserved" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if current_filter == 'reserved' }}">Забронированы</button>
+            <button hx-get="/?filter=occupied" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if current_filter == 'occupied' }}">Заселеные номера</button>
+            <button hx-get="/?filter=dirty" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if current_filter == 'dirty' }}">Требуют уборки</button>
+            <button hx-get="/?filter=broken" hx-push-url="true" hx-target="#nomer-list-body"
+                class="filter-btn {{ 'active' if current_filter == 'broken' }}">На ремонте</button>
+        </div>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="content-area">
+        <section class="add-room-section-premium">
+            <form hx-post="/nomera" hx-target="#nomer-list-body" hx-swap="innerHTML" class="premium-form-inline"
+                hx-on::after-request="this.reset()">
+                <div class="inline-grid">
+                    <div class="input-styled" style="flex: 0.5;">
+                        <label>Номер комнаты</label>
+                        <div class="input-room-wrapper">
+                            <input type="text" name="nomer_komnati" placeholder="3411" required
+                                class="line-editor room-input-field" style="padding-left:8px;">
+                        </div>
+                    </div>
+                    <div class="input-styled">
+                        <label>Колл-во комнат</label>
+                        <input type="number" name="kolvo_komnat" value="1" min="1" class="line-editor">
+                    </div>
+                    <div class="input-styled">
+                        <label>Кроватей</label>
+                        <input type="number" name="kolvo_krovatey" value="1" min="1" class="line-editor">
+                    </div>
+                    <button type="submit" class="add-btn-premium">
+                        <span>+</span> Добавить
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <div class="table-container-modern">
+            <table class="hotel-table-modern">
+                <thead>
+                    <tr>
+                        <th class="col-room">Комната</th>
+                        <th class="col-status desktop-only">Статус</th>
+                        <th class="col-condition mobile-only">Состояние</th>
+                        <th class="col-staff desktop-only">Персонал</th>
+                        <th class="col-tenant desktop-only">Жилец</th>
+                        <th class="col-booking desktop-only">Бронирование</th>
+                        <th class="col-condition desktop-only">Состояние</th>
+                        <th class="col-action desktop-only">Действие</th>
+                    </tr>
+                </thead>
+                <tbody id="nomer-list-body">
+                    {% include "partials/nomer_list.html" %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Слушатель событий HTMX для обновления визуального состояния фильтров
+    document.body.addEventListener('htmx:afterOnLoad', function (evt) {
+        // Проверяем, что запрос был к корню (с фильтрами или без)
+        const path = evt.detail.pathInfo.requestPath;
+        if (path === '/' || path.startsWith('/?')) {
+            const urlParams = new URL(evt.detail.pathInfo.responsePath, window.location.origin).searchParams;
+            const currentFilter = urlParams.get('filter') || 'all';
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const btnUrl = new URL(btn.getAttribute('hx-get'), window.location.origin);
+                const btnFilter = btnUrl.searchParams.get('filter') || 'all';
+
+                if (btnFilter === currentFilter) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
