@@ -1,4 +1,5 @@
-<div id="modal" class="modal-overlay" onclick="if(event.target == this) this.remove()">
+<div id="modal" class="modal-overlay" ondblclick="if(event.target == this) this.remove()"
+    onclick="if(event.target == this) this.remove()">
     <div class="modal-content booking-modal-content" onclick="event.stopPropagation()">
         <header class="guest-card-header">
             <div class="avatar-placeholder">👷</div>
@@ -10,13 +11,22 @@
                 <p style="margin:4px 0 0; color:var(--text-muted); font-size:0.9rem;">Номер: {{ nomer.nomer_komnati }}
                 </p>
             </div>
+            {% if source == 'details' %}
+            <button class="logout-btn" style="margin-left: auto; background: none; border: none; font-size: 1.5rem;"
+                hx-get="/nomera/{{ nomer.id }}/details" hx-target="closest .modal-overlay"
+                hx-swap="outerHTML">×</button>
+            {% else %}
             <button class="logout-btn" style="margin-left: auto; background: none; border: none; font-size: 1.5rem;"
                 onclick="document.getElementById('modal').remove()">×</button>
+            {% endif %}
         </header>
 
         <div class="guest-content-body">
-            <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
-                hx-on::after-request="document.getElementById('modal').remove()">
+            <form hx-post="/nomera/{{ nomer.id }}/update"
+                hx-target="{% if source == 'details' %}closest .modal-overlay{% else %}#nomer-{{ nomer.id }}{% endif %}"
+                hx-swap="{% if source == 'details' %}innerHTML{% else %}outerHTML{% endif %}" {% if source !='details'
+                %}hx-on::after-request="document.getElementById('modal').remove()" {% endif %}>
+                <input type="hidden" name="source" value="{{ source }}">
                 <div class="input-styled" style="margin-bottom: 1.5rem;">
                     <label>Выберите сотрудника ({{ target_role }})</label>
                     <select name="otvetstvenniy" class="status-select"
@@ -32,8 +42,13 @@
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    {% if source == 'details' %}
+                    <button type="button" class="logout-btn" style="flex: 1;" hx-get="/nomera/{{ nomer.id }}/details"
+                        hx-target="closest .modal-overlay" hx-swap="outerHTML">Отмена</button>
+                    {% else %}
                     <button type="button" class="logout-btn" style="flex: 1;"
                         onclick="document.getElementById('modal').remove()">Отмена</button>
+                    {% endif %}
                     <button type="submit" class="add-btn-premium"
                         style="flex: 2; justify-content: center;">Подтвердить</button>
                 </div>

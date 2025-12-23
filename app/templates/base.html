@@ -158,8 +158,8 @@
             }
         }
 
-        window.initFlatpickrForRoom = function (id) {
-            flatpickr("#picker-" + id, {
+        window.initFlatpickrForRoom = function (id, start = null, end = null) {
+            let config = {
                 mode: "range",
                 dateFormat: "Y-m-d",
                 minDate: "today",
@@ -175,13 +175,26 @@
                 },
                 onChange: function (selectedDates, dateStr, instance) {
                     if (selectedDates.length === 2) {
-                        const start = document.getElementById('start-' + id);
-                        const end = document.getElementById('end-' + id);
-                        if (start) start.value = instance.formatDate(selectedDates[0], "Y-m-d");
-                        if (end) end.value = instance.formatDate(selectedDates[1], "Y-m-d");
+                        const startInput = document.getElementById('start-' + id);
+                        const endInput = document.getElementById('end-' + id);
+                        if (startInput) startInput.value = instance.formatDate(selectedDates[0], "Y-m-d");
+                        if (endInput) endInput.value = instance.formatDate(selectedDates[1], "Y-m-d");
                     }
                 }
-            });
+            };
+
+            if (start && end && start !== 'None' && end !== 'None') {
+                config.defaultDate = [start, end];
+                // Pre-fill hidden inputs immediately
+                setTimeout(() => {
+                    const startInput = document.getElementById('start-' + id);
+                    const endInput = document.getElementById('end-' + id);
+                    if (startInput) startInput.value = start;
+                    if (endInput) endInput.value = end;
+                }, 100);
+            }
+
+            flatpickr("#picker-" + id, config);
         };
     </script>
 </body>

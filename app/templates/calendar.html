@@ -116,6 +116,19 @@
             <span>Выбранный диапазон</span>
         </div>
     </div>
+    <!-- Error Toast -->
+    <div id="error-toast"
+        style="position: fixed; top: 20px; right: 20px; background: rgba(239, 68, 68, 0.9); color: white; padding: 15px 25px; border-radius: 12px; font-weight: 700; transform: translateX(120%); transition: transform 0.3s; z-index: 10000; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3); backdrop-filter: blur(5px);">
+        <span id="error-toast-msg">Ошибка</span>
+    </div>
+
+    <!-- Booking Action Popup -->
+    <div id="booking-popup"
+        style="position: absolute; display: none; z-index: 100; background: var(--card-bg); padding: 10px; border-radius: 12px; border: 1px solid var(--accent-vibrant); box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: popIn 0.2s;">
+        <button id="confirm-booking-btn" class="add-btn-premium" style="font-size: 0.8rem; padding: 8px 16px;">
+            Забронировать
+        </button>
+    </div>
 </div>
 
 <style>
@@ -176,6 +189,39 @@
         background: rgba(124, 58, 237, 0.1);
         border-radius: 8px;
     }
+
+    @keyframes popIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .calendar-cell.range-start {
+        border: 2px solid var(--success) !important;
+        background: rgba(16, 185, 129, 0.2);
+    }
+
+    .calendar-cell.range-end {
+        border: 2px solid var(--success) !important;
+        background: rgba(16, 185, 129, 0.2);
+    }
+
+    .calendar-cell.in-selection-range {
+        background: rgba(16, 185, 129, 0.15) !important;
+        border-top: 2px solid var(--success);
+        border-bottom: 2px solid var(--success);
+    }
+
+    .calendar-cell {
+        cursor: pointer;
+        /* Indicate clickable */
+    }
 </style>
 
 <script>
@@ -231,6 +277,167 @@
             }
         });
     }
+
+    // --- Booking Logic ---
+    let bookingState = {
+        start: null,     // { date: "YYYY-MM-DD", roomId: "123", el: DOMElement }
+        end: null,       // { date: "YYYY-MM-DD", roomId: "123", el: DOMElement }
+        active: false
+    };
+
+    const calendarTable = document.getElementById('calendarTable');
+    const bookingPopup = document.getElementById('booking-popup');
+    const errorToast = document.getElementById('error-toast');
+    const errorMsg = document.getElementById('error-toast-msg');
+
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorToast.style.transform = "translateX(0)";
+        setTimeout(() => {
+            errorToast.style.transform = "translateX(120%)";
+        }, 3000);
+    }
+
+    function clearBookingSelection() {
+        document.querySelectorAll('.calendar-cell').forEach(c => {
+            c.classList.remove('range-start');
+            c.classList.remove('range-end');
+            c.classList.remove('in-selection-range');
+        });
+        bookingState = { start: null, end: null, active: false };
+        bookingPopup.style.display = 'none';
+    }
+
+    // Double click handler
+    calendarTable.addEventListener('dblclick', function (e) {
+        const cell = e.target.closest('.calendar-cell');
+        if (!cell) return;
+
+        // Ignore if occupied (or maybe handle occupied clicks differently?) 
+        // User asked "distinguish booking from check-in", implying we can book free slots.
+        if (cell.classList.contains('occupied')) return;
+
+        const date = cell.dataset.date;
+        // Parse ID: cell-{nomer_id}-{date}
+        const parts = cell.id.split('-');
+        const nomerId = parts[1];
+
+        // 0. Check if date is in the past
+        const todayStr = "{{ now_date }}";
+        if (date < todayStr) {
+            showError('Нельзя бронировать в прошлом');
+            return;
+        }
+
+        // 1. First selection
+        if (!bookingState.start) {
+            bookingState.start = { date: date, roomId: nomerId, el: cell };
+            bookingState.active = true;
+            cell.classList.add('range-start');
+            return;
+        }
+
+        // 2. Second selection (End date)
+        // Check Room ID
+        if (nomerId !== bookingState.start.roomId) {
+            // Find room number for error message
+            // We can find the row header or badge
+            // The row contains the badge. The badge is in the first TD of the TR.
+            // Let's try to find the room number from the ID if we can't traverse easily.
+            // Actually, we can get the text from the room id badge in the same row.
+            const row = cell.closest('tr');
+            const badge = row.querySelector('.room-id-number');
+            const currentRoomNum = badge ? badge.textContent.trim() : "Unknown";
+
+            // Wait, we need the room number of the STARTED room.
+            // We stored the element, so we can find it.
+            const startRow = bookingState.start.el.closest('tr');
+            const startBadge = startRow.querySelector('.room-id-number');
+            const startRoomNum = startBadge ? startBadge.textContent.trim() : bookingState.start.roomId;
+
+            showError(`Уже существует начало для ${startRoomNum} комнаты`);
+            return;
+        }
+
+        // Calculate min/max dates to handle reverse selection
+        let d1 = bookingState.start.date;
+        let d2 = date;
+        if (d1 > d2) { [d1, d2] = [d2, d1]; }
+
+        bookingState.end = { date: date, roomId: nomerId, el: cell };
+
+        // Visual Update
+        highlightBookingRange(bookingState.start.roomId, d1, d2);
+
+        // Show Popup
+        showPopup(cell, nomerId, d1, d2);
+    });
+
+    function highlightBookingRange(roomId, start, end) {
+        // Find all cells for this room in range
+        // Since we don't have a direct map, we can query selector by ID pattern?
+        // Or iterate. Querying is cleaner.
+        // Assuming we can iterate dates? Or just querySelectorAll(`[id^='cell-${roomId}-']`)
+
+        // Simple way: iterate all cells of the table? No, too slow.
+        // Better: iterate dates from start to end.
+
+        let curr = new Date(start);
+        let last = new Date(end);
+
+        while (curr <= last) {
+            let iso = curr.toISOString().split('T')[0];
+            let el = document.getElementById(`cell-${roomId}-${iso}`);
+            if (el) {
+                el.classList.add('in-selection-range');
+            }
+            curr.setDate(curr.getDate() + 1);
+        }
+    }
+
+    function showPopup(targetEl, nomerId, start, end) {
+        // Position popup under targetEl
+        const rect = targetEl.getBoundingClientRect();
+        // Correct for scroll positions if body scrolls
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+        bookingPopup.style.top = (rect.bottom + scrollTop + 10) + 'px';
+        bookingPopup.style.left = (rect.left + scrollLeft - 50) + 'px';
+        bookingPopup.style.display = 'block';
+
+        const btn = document.getElementById('confirm-booking-btn');
+        // Clear previous listeners (cloning node is a quick hack)
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+
+        newBtn.onclick = function () {
+            // Open Modal via HTMX
+            // hx-get="/nomera/ID/booking-modal?start=...&end=..."
+            // We can trigger htmx manually or just use htmx.ajax
+            htmx.ajax('GET', `/nomera/${nomerId}/booking-modal?start=${start}&end=${end}&source_page=calendar`, {
+                target: 'body',
+                swap: 'beforeend'
+            });
+            clearBookingSelection(); // Clear visual selection after opening modal? 
+            // Maybe keep it until modal closes? 
+            // User requirement: "Two clicks ... popup ... double click outside closes it". 
+            // "After pressing 'Book' ... form appears".
+            // Let's clear logic state but maybe visual state depends on modal?
+            // Existing modal logic doesn't preserve calendar state. Safe to clear.
+        };
+    }
+
+    // Dismiss popup on double click outside
+    document.addEventListener('dblclick', function (e) {
+        if (bookingState.active && !e.target.closest('#booking-popup') && !e.target.closest('.calendar-cell')) {
+            clearBookingSelection();
+        }
+    });
+
+    // Also Close on single click if it's "outside zone of this panel"? 
+    // User said: "in case of double click outside zone of this panel, it closes and resets".
+    // I handled that above.
 
     function scrollToSelectedRange() {
         if (!selectedStart) return;

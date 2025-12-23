@@ -29,16 +29,16 @@
     <!-- 3. Состояние (Mobile Only) -->
     <td class="col-condition mobile-only">
         <div style="text-align: center; font-weight: 700; font-size: 0.85rem;">
-            {% if nomer.gotov_k_sdache %}
-            <span style="color: #10b981;">Готов</span>
-            {% elif nomer.zanyat %}
-            <span style="color: #ef4444;">Занят</span>
-            {% elif nomer.status.value == "Требует уборки" %}
-            <span style="color: #f59e0b;">Не убрана</span>
+            {% if nomer.zanyat %}
+            <span class="badge badge-danger">ЗАНЯТ</span>
             {% elif nomer.status.value == "На ремонте" %}
-            <span style="color: #f43f5e;">Сломана</span>
+            <span class="badge badge-danger">РЕМОНТ</span>
+            {% elif nomer.status.value == "Требует уборки" %}
+            <span class="badge badge-problem">ГРЯЗНО</span>
+            {% elif nomer.zarezervirovan %}
+            <span class="badge" style="background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant);">БРОНЬ</span>
             {% else %}
-            <span style="color: var(--text-muted);">—</span>
+            <span class="badge badge-success">ГОТОВ</span>
             {% endif %}
         </div>
     </td>
@@ -63,11 +63,11 @@
 
     <!-- 5. Жилец -->
     <td class="col-tenant desktop-only">
-        {% if nomer.zanyat %}
+        {% if nomer.zanyat or (nomer.zarezervirovan and nomer.fio_bron) %}
         <div class="tenant-plate" hx-get="/nomera/{{ nomer.id }}/guest-details" hx-target="body" hx-swap="beforeend"
             style="cursor: pointer;">
             <span class="tenant-plate-label">Жилец</span>
-            <span class="tenant-plate-name">👤 {{ nomer.fio_zhilca }}</span>
+            <span class="tenant-plate-name">👤 {{ nomer.fio_zhilca or nomer.fio_bron }}</span>
         </div>
         {% else %}
         <span
@@ -85,10 +85,7 @@
             <div style="margin-top: 4px; color: var(--text-muted); font-weight: 500;">{{ nomer.vremya_zaezda }} — {{
                 nomer.vremya_viezda }}</div>
             {% if user.role in ['admin', 'moderator'] %}
-            <button hx-post="/nomera/{{ nomer.id }}/cancel-reserv" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
-                class="cancel-link"
-                style="color: var(--danger); border: none; background: none; font-size: 0.7rem; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 6px; font-weight: 600;">Удалить
-                бронь</button>
+            <!-- Кнопка удаления брони убрана по просьбе пользователя -->
             {% endif %}
         </div>
         {% else %}
@@ -99,16 +96,17 @@
     <!-- 7. Состояние (Desktop) -->
     <td class="col-condition desktop-only">
         <div style="display: flex; justify-content: center;">
-            {% if nomer.gotov_k_sdache %}
-            <span class="badge badge-success" style="box-shadow: 0 0 15px rgba(16,185,129,0.2);">ГОТОВ</span>
-            {% elif nomer.zanyat %}
+            {% if nomer.zanyat %}
             <span class="badge badge-danger">ЗАНЯТ</span>
-            {% elif nomer.status.value == "Требует уборки" %}
-            <span class="badge badge-problem">ГРЯЗНО</span>
             {% elif nomer.status.value == "На ремонте" %}
             <span class="badge badge-danger">РЕМОНТ</span>
+            {% elif nomer.status.value == "Требует уборки" %}
+            <span class="badge badge-problem">ГРЯЗНО</span>
+            {% elif nomer.zarezervirovan %}
+            <span class="badge"
+                style="background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); box-shadow: 0 0 10px rgba(124,58,237,0.1);">БРОНЬ</span>
             {% else %}
-            <span class="badge badge-danger">ПАУЗА</span>
+            <span class="badge badge-success" style="box-shadow: 0 0 15px rgba(16,185,129,0.2);">ГОТОВ</span>
             {% endif %}
         </div>
     </td>
@@ -117,9 +115,6 @@
     <td class="col-action desktop-only">
         <div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
             {% if user.role in ['admin', 'moderator'] %}
-            <button class="reserve-btn" {% if not nomer.gotov_k_sdache %}disabled
-                style="opacity:0.25; cursor:not-allowed;" {% endif %} hx-get="/nomera/{{ nomer.id }}/booking-modal"
-                hx-target="body" hx-swap="beforeend">Бронь</button>
             <button hx-delete="/nomera/{{ nomer.id }}" hx-target="#nomer-{{ nomer.id }}" hx-swap="delete"
                 hx-confirm="Удалить номер?"
                 style="background: none; border: none; font-size: 1.3rem; cursor: pointer; opacity: 0.4; transition: opacity 0.2s;"

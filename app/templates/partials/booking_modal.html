@@ -12,8 +12,11 @@
             style="color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 10px; margin-bottom: 1rem; display: none; font-weight: 700; text-align: center;">
         </div>
 
-        <form hx-post="/nomera/{{ nomer.id }}/reserv" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
-            hx-on::after-request="if(event.detail.xhr.status === 200) { this.closest('.modal-overlay').remove(); } else { document.getElementById('booking-error').textContent = 'Ошибка! Проверьте заполнение всех полей'; document.getElementById('booking-error').style.display = 'block'; }">
+        <form hx-post="/nomera/{{ nomer.id }}/reserv"
+            hx-target="{% if source_page == 'calendar' %}body{% else %}#nomer-{{ nomer.id }}{% endif %}"
+            hx-swap="{% if source_page == 'calendar' %}none{% else %}outerHTML{% endif %}"
+            hx-on::after-request="if(event.detail.xhr.status === 200) { this.closest('.modal-overlay').remove(); if('{{ source_page }}' === 'calendar') { window.location.reload(); } } else { document.getElementById('booking-error').textContent = 'Ошибка! Проверьте заполнение всех полей'; document.getElementById('booking-error').style.display = 'block'; }">
+            <input type="hidden" name="source_page" value="{{ source_page }}">
             <div class="bron-grid">
                 <div class="input-styled">
                     <label>Период проживания</label>
@@ -48,6 +51,11 @@
                     <label>Доп. гостей</label>
                     <input type="number" name="dop_gosti" value="0" min="0" class="line-editor" style="width: 100%;">
                 </div>
+                <div class="input-styled">
+                    <label>От кого (Источник)</label>
+                    <input type="text" name="source" placeholder="Например: Booking.com, От Ивана" class="line-editor"
+                        style="width: 100%;">
+                </div>
                 <div class="input-styled" style="grid-column: span 2;">
                     <label>Комментарий / Пожелания</label>
                     <input type="text" name="kommentariy" placeholder="Например: нужна детская кроватка"
@@ -67,6 +75,6 @@
 </div>
 <script>
     if (window.initFlatpickrForRoom) {
-        window.initFlatpickrForRoom('{{ nomer.id }}');
+        window.initFlatpickrForRoom('{{ nomer.id }}', '{{ start_date }}', '{{ end_date }}');
     }
 </script>

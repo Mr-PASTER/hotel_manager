@@ -1,4 +1,4 @@
-<div id="room-details-modal" class="modal-overlay"
+<div id="room-details-modal" class="modal-overlay" ondblclick="if(event.target === this) this.remove()"
     style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 3000;">
     <div class="modal-content" style="width: 450px; padding: 2.5rem; border-radius: 28px;">
         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 2rem;">
@@ -13,7 +13,8 @@
             <!-- Статус с возможностью изменения -->
             <div class="data-item">
                 <span class="data-label">Текущий статус (нажмите для смены)</span>
-                <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML">
+                <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="closest .modal-overlay" hx-swap="innerHTML">
+                    <input type="hidden" name="source" value="details">
                     <select name="status" onchange="this.form.requestSubmit()"
                         class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}"
                         style="width: 100%; height: 45px; font-size: 1rem; margin-top: 5px;">
@@ -30,6 +31,20 @@
                 <span class="data-label">Характеристики</span>
                 <span class="data-value" style="font-size: 1.1rem; font-weight: 700;">{{ nomer.kolvo_komnat }}К / {{
                     nomer.kolvo_krovatey }}КР</span>
+            </div>
+
+            <div class="data-item">
+                <span class="data-label">Ответственный</span>
+                <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+                    <span class="data-value" style="font-weight: 700;">{{ nomer.otvetstvenniy or 'Не назначен' }}</span>
+                    {% if nomer.status.value != "Убрана" %}
+                    <button class="btn-base" hx-get="/nomera/{{ nomer.id }}/assign-staff-modal?source=details"
+                        hx-target="closest .modal-overlay" hx-swap="outerHTML"
+                        style="padding: 6px 12px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 1px solid rgba(124,58,237,0.2);">
+                        Назначить
+                    </button>
+                    {% endif %}
+                </div>
             </div>
 
             {% if nomer.fio_zhilca %}
@@ -63,13 +78,8 @@
                 style="flex: 1; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700;">
                 Закрыть
             </button>
-            {% if nomer.gotov_k_sdache %}
-            <button class="add-btn-premium" hx-get="/nomera/{{ nomer.id }}/booking-modal" hx-target="body"
-                hx-swap="beforeend" hx-on::after-request="document.getElementById('room-details-modal').remove()"
-                style="flex: 1.5; background: var(--accent-vibrant); color: white; border: none; font-weight: 800; border-radius: 14px; height: 50px; cursor: pointer;">
-                Забронировать
-            </button>
-            {% endif %}
+            <!-- Кнопка бронирования удалена по запросу -->
+
         </div>
     </div>
 </div>

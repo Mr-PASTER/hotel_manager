@@ -56,7 +56,8 @@
 
 
 
-    <div class="table-container-modern">
+    <!-- Desktop version -->
+    <div class="table-container-modern desktop-only">
         <table class="hotel-table-modern">
             <thead>
                 <tr>
@@ -74,5 +75,24 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Mobile version -->
+    <div class="mobile-only" id="staff-list-mobile" style="display: none;">
+        {% for s in staff %}
+        {% include "partials/staff_row_mobile.html" %}
+        {% endfor %}
+    </div>
 </div>
+
+<style>
+    @media (max-width: 768px) {
+        .desktop-only {
+            display: none !important;
+        }
+
+        .mobile-only {
+            display: block !important;
+        }
+    }
+</style>
 {% endblock %}

@@ -17,6 +17,17 @@
     --shadow-main: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
+/* Global Scale Adjustment - Decreasing interface size */
+html {
+    font-size: 12px;
+    /* Decreasing base font size */
+}
+
+body {
+    zoom: 1;
+    /* Scaling down the interface */
+}
+
 /* Stylish Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
@@ -97,6 +108,117 @@
 /* Visibility Utilities */
 .mobile-only {
     display: none !important;
+}
+
+/* Mobile Adaptations */
+@media (max-width: 800px) {
+
+    /* 1. Calendar controls in column */
+    .calendar-controls-premium {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+        padding: 1rem !important;
+    }
+
+    /* 2. Smaller room number column */
+    .calendar-table th:first-child,
+    .calendar-table td:first-child {
+        min-width: 50px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .room-id-badge {
+        min-width: 40px !important;
+        padding: 0.3rem !important;
+    }
+
+    .room-id-number {
+        font-size: 0.85rem !important;
+    }
+
+    /* 3. Reduce flatpickr size by 10% */
+    .flatpickr-calendar {
+        transform: scale(0.9);
+        transform-origin: top left;
+    }
+
+    /* 4. Staff table - show only name on mobile */
+    .staff-row-mobile {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        background: var(--table-row-bg);
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+    }
+
+    .staff-row-mobile .staff-name {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+
+    .staff-row-mobile .staff-details {
+        display: none;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--glass-border);
+    }
+
+    .staff-row-mobile.expanded .staff-details {
+        display: block;
+    }
+
+    /* 5. Reduce profile bar width */
+    .user-profile-bar {
+        padding: 0.5rem 1rem !important;
+        gap: 20px !important;
+        overflow-x: hidden !important;
+    }
+
+    .user-profile-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* 7. Auth block layout in mobile menu */
+    .user-control-group {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+
+    .user-info {
+        flex-direction: row !important;
+        gap: 0.5rem !important;
+    }
+
+    .logout-btn {
+        width: 100%;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+
+    /* 8. Room number input width fix */
+    .input-styled.full-width-mobile,
+    .input-room-wrapper {
+        width: 100% !important;
+    }
+
+    .inline-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* 9. Guest details buttons in column */
+    .guest-modal-content .btn-group-mobile {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+
+    .guest-modal-content .btn-group-mobile button {
+        width: 100% !important;
+        flex: none !important;
+    }
 }
 
 .desktop-only {
@@ -568,6 +690,10 @@ button:active:not(:disabled) {
     padding: 1rem;
     border: 1px solid var(--glass-border);
     box-shadow: var(--shadow-main);
+    display: flex;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 .hotel-table-modern {

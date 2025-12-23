@@ -1,4 +1,4 @@
-<div id="guest-details-modal" class="modal-overlay"
+<div id="guest-details-modal" class="modal-overlay" ondblclick="if(event.target === this) this.remove()"
     style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 3000;">
     <div class="modal-content guest-modal-content" style="width: 550px; padding: 2.5rem; border-radius: 28px;">
         <div class="guest-info-card">
@@ -37,21 +37,12 @@
                         <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">+{{
                             nomer.dop_gosti or 0 }} чел.</span>
                     </div>
-                    <div class="data-item">
+                    <div class="data-item clickable-block" style="grid-column: span 2;">
                         <span class="data-label"
-                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Дата
-                            заезда</span>
+                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Период
+                            проживания</span>
                         <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">{{
-                            format_date(nomer.data_zaezda) }} <span style="font-size: 0.8rem; opacity: 0.7;">{{
-                                nomer.vremya_zaezda }}</span></span>
-                    </div>
-                    <div class="data-item">
-                        <span class="data-label"
-                            style="display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Дата
-                            выезда</span>
-                        <span class="data-value" style="display: block; font-size: 1.1rem; font-weight: 700;">{{
-                            format_date(nomer.data_viezda) }} <span style="font-size: 0.8rem; opacity: 0.7;">{{
-                                nomer.vremya_viezda }}</span></span>
+                            nomer.booking_period }}</span>
                     </div>
                     <div class="data-item" style="grid-column: span 2;">
                         <span class="data-label"
@@ -64,7 +55,8 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <div class="btn-group-mobile"
+                    style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
                     {% if show_back %}
                     <button class="filter-btn" hx-get="/nomera/{{ nomer.id }}/details"
                         hx-target="closest .modal-overlay" hx-swap="outerHTML"
@@ -79,12 +71,14 @@
                         onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
                     {% endif %}
 
-                    <button class="add-btn-premium" hx-post="/nomera/{{ nomer.id }}/update"
-                        hx-vals='{"zanyat": "false"}' hx-target="#nomer-{{ nomer.id }}" hx-swap="outerHTML"
-                        hx-on::after-request="document.getElementById('guest-details-modal').remove()"
+                    {% if nomer.has_booking %}
+                    <button class="add-btn-premium" hx-post="/nomera/{{ nomer.id }}/cancel-reserv"
+                        hx-target="closest .modal-overlay" hx-swap="outerHTML"
+                        hx-confirm="Вы уверены, что хотите удалить бронь и информацию о госте?"
                         style="padding: 12px 24px; border-radius: 14px; background: var(--danger); border: none; color: white; font-weight: 800; cursor: pointer;">
-                        Выселить гостя
+                        Удалить бронь
                     </button>
+                    {% endif %}
                 </div>
             </div>
         </div>

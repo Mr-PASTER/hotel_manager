@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLAlchemyEnum, DateTime
+from datetime import datetime
 import enum
 from .database import Base
 
@@ -40,6 +41,31 @@ class Nomer(Base):
         return (self.status == StatusNomera.CHISTO and 
                 not self.zanyat and 
                 not self.zarezervirovan)
+
+class BookingStatus(str, enum.Enum):
+    BOOKED = "booked"         # Забронировано
+    CHECKED_IN = "checked_in" # Заселен
+    CANCELLED = "cancelled"   # Отменено
+    COMPLETED = "completed"   # Выселен/Завершено
+
+class Booking(Base):
+    __tablename__ = "bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nomer_id = Column(Integer, index=True)
+    
+    # Даты как строки "YYYY-MM-DD"
+    start_date = Column(String, index=True)
+    end_date = Column(String, index=True)
+    
+    # Информация о госте
+    guest_name = Column(String)
+    phone = Column(String, nullable=True)
+    source = Column(String, nullable=True) # "От кого"
+    comment = Column(String, nullable=True)
+    
+    status = Column(SQLAlchemyEnum(BookingStatus), default=BookingStatus.BOOKED)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class User(Base):
     __tablename__ = "users"
