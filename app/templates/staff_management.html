@@ -6,26 +6,26 @@
 </div>
 
 <div class="content-area">
-    <section class="add-room-section-premium">
+    <section class="add-room-section-premium" , style="margin-bottom: 2rem;">
         <form hx-post="/staff" hx-target="#staff-list" hx-swap="beforeend" class="premium-form-inline" id="addStaffForm"
             hx-on::after-request="this.reset()">
             <div class="inline-grid">
                 <div class="input-styled full-width-mobile">
                     <label>Логин</label>
-                    <div style="display: flex; gap: 5px;">
+                    <div class="input-with-copy">
                         <input type="text" name="username" id="newUsername" class="line-editor" placeholder="ivanov"
-                            required style="flex: 1;">
+                            required autocomplete="off">
                         <button type="button" class="btn-base" onclick="copyToClipboard('newUsername')"
-                            title="Копировать" style="padding: 0 10px;">📋</button>
+                            title="Копировать">📋</button>
                     </div>
                 </div>
                 <div class="input-styled full-width-mobile">
                     <label>Пароль</label>
-                    <div style="display: flex; gap: 5px;">
+                    <div class="input-with-copy">
                         <input type="password" name="password" id="newPassword" class="line-editor"
-                            placeholder="••••••••" required style="flex: 1;">
+                            placeholder="••••••••" required autocomplete="new-password">
                         <button type="button" class="btn-base" onclick="copyToClipboard('newPassword')"
-                            title="Копировать" style="padding: 0 10px;">📋</button>
+                            title="Копировать">📋</button>
                     </div>
                 </div>
                 <div class="input-styled">
@@ -41,6 +41,14 @@
                         <option value="staff">Персонал</option>
                         <option value="admin">Администратор</option>
                     </select>
+                </div>
+                <div class="input-styled">
+                    <label>Телеграм ID</label>
+                    <input type="text" name="telegram_id" class="line-editor" placeholder="123456789">
+                </div>
+                <div class="input-styled">
+                    <label>Телефон</label>
+                    <input type="text" name="phone" class="line-editor" placeholder="+7...">
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                     <button type="button" class="btn-base" onclick="generateCredentials()"
@@ -63,6 +71,8 @@
                 <tr>
                     <th>Логин</th>
                     <th>ФИО</th>
+                    <th>Telegram ID</th>
+                    <th>Телефон</th>
                     <th>Роль</th>
                     <th>Статус</th>
                     <th>Действия</th>
@@ -84,15 +94,5 @@
     </div>
 </div>
 
-<style>
-    @media (max-width: 768px) {
-        .desktop-only {
-            display: none !important;
-        }
 
-        .mobile-only {
-            display: block !important;
-        }
-    }
-</style>
 {% endblock %}

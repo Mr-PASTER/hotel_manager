@@ -20,24 +20,24 @@
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div class="input-styled">
                         <label>Логин</label>
-                        <div style="display: flex; gap: 5px;">
+                        <div class="input-with-copy">
                             <input type="text" name="username" id="editUsername-{{ s.id }}" value="{{ s.username }}"
-                                class="line-editor" required style="flex: 1;">
+                                class="line-editor" required>
                             <button type="button" class="btn-base"
                                 onclick="generateCredentials('editUsername-{{ s.id }}', 'editPassword-{{ s.id }}')"
                                 title="Сгенерировать новые"
-                                style="padding: 0 10px; background: var(--warning); border: none; font-size: 0.8rem;">✨</button>
+                                style="padding: 8px; background: var(--warning); border: none; font-size: 1.1rem; color: white;">✨</button>
                             <button type="button" class="btn-base" onclick="copyToClipboard('editUsername-{{ s.id }}')"
-                                title="Копировать" style="padding: 0 10px;">📋</button>
+                                title="Копировать">📋</button>
                         </div>
                     </div>
                     <div class="input-styled">
                         <label>Новый пароль (пусто = не менять)</label>
-                        <div style="display: flex; gap: 5px;">
+                        <div class="input-with-copy">
                             <input type="password" name="password" id="editPassword-{{ s.id }}" class="line-editor"
-                                style="flex: 1;">
+                                autocomplete="new-password">
                             <button type="button" class="btn-base" onclick="copyToClipboard('editPassword-{{ s.id }}')"
-                                title="Копировать" style="padding: 0 10px;">📋</button>
+                                title="Копировать НОВЫЙ пароль">📋</button>
                         </div>
                     </div>
                     <div class="input-styled">
@@ -56,20 +56,20 @@
                     </div>
                     <div class="input-styled">
                         <label>Телефон</label>
-                        <div style="display: flex; gap: 5px;">
+                        <div class="input-with-copy">
                             <input type="text" name="phone" value="{{ s.phone or '' }}" class="line-editor"
-                                id="editPhone-{{ s.id }}" oninput="formatPhone(this)" style="flex: 1;">
+                                id="editPhone-{{ s.id }}" oninput="formatPhone(this)">
                             <button type="button" class="btn-base" onclick="copyToClipboard('editPhone-{{ s.id }}')"
-                                title="Копировать" style="padding: 0 10px;">📋</button>
+                                title="Копировать">📋</button>
                         </div>
                     </div>
                     <div class="input-styled">
                         <label>Telegram ID</label>
-                        <div style="display: flex; gap: 5px;">
+                        <div class="input-with-copy">
                             <input type="text" name="telegram_id" value="{{ s.telegram_id or '' }}" class="line-editor"
-                                id="editTelegram-{{ s.id }}" placeholder="@username" style="flex: 1;">
+                                id="editTelegram-{{ s.id }}" placeholder="@username">
                             <button type="button" class="btn-base" onclick="copyToClipboard('editTelegram-{{ s.id }}')"
-                                title="Копировать" style="padding: 0 10px;">📋</button>
+                                title="Копировать">📋</button>
                         </div>
                     </div>
                 </div>
@@ -80,10 +80,12 @@
                         style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--glass-border); border-radius: 12px; background: rgba(0,0,0,0.1); color: white;">{{ s.comment or '' }}</textarea>
                 </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="logout-btn" style="flex: 1;"
+                <div class="inline-grid" style="margin-top: 2rem;">
+                    <button type="button" class="filter-btn"
+                        style="flex: 1; padding: 12px; font-weight: 700; background: rgba(255, 255, 255, 0.05);"
                         onclick="document.getElementById('staffModal').remove()">Отмена</button>
-                    <button type="submit" class="add-btn-premium" style="flex: 2; justify-content: center;">Сохранить
+                    <button type="submit" class="add-btn-premium"
+                        style="flex: 2; justify-content: center; padding: 12px;">Сохранить
                         изменения</button>
                 </div>
             </form>

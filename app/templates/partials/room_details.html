@@ -1,6 +1,7 @@
 <div id="room-details-modal" class="modal-overlay" ondblclick="if(event.target === this) this.remove()"
     style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 3000;">
-    <div class="modal-content" style="width: 450px; padding: 2.5rem; border-radius: 28px;">
+    <div class="modal-content"
+        style="width: 450px; padding: 2.5rem; border-radius: 28px; display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;">
         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 2rem;">
             <div class="room-id-badge" style="background: var(--accent-vibrant); border: none; transform: scale(1.1);">
                 <span class="room-id-label" style="color: rgba(255,255,255,0.7);">Номер</span>
@@ -9,77 +10,82 @@
             <h3 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">Детали номера</h3>
         </div>
 
-        <div class="guest-data-grid" style="grid-template-columns: 1fr; gap: 1.25rem;">
-            <!-- Статус с возможностью изменения -->
-            <div class="data-item">
-                <span class="data-label">Текущий статус (нажмите для смены)</span>
-                <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="closest .modal-overlay" hx-swap="innerHTML">
-                    <input type="hidden" name="source" value="details">
-                    <select name="status" onchange="this.form.requestSubmit()"
-                        class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}"
-                        style="width: 100%; height: 45px; font-size: 1rem; margin-top: 5px;">
-                        <option value="Убрана" {% if nomer.status.value=="Убрана" %}selected{% endif %}>Убрана</option>
-                        <option value="Требует уборки" {% if nomer.status.value=="Требует уборки" %}selected{% endif %}>
-                            Грязная</option>
-                        <option value="На ремонте" {% if nomer.status.value=="На ремонте" %}selected{% endif %}>Ремонт
-                        </option>
-                    </select>
-                </form>
-            </div>
-
-            <div class="data-item">
-                <span class="data-label">Характеристики</span>
-                <span class="data-value" style="font-size: 1.1rem; font-weight: 700;">{{ nomer.kolvo_komnat }}К / {{
-                    nomer.kolvo_krovatey }}КР</span>
-            </div>
-
-            <div class="data-item">
-                <span class="data-label">Ответственный</span>
-                <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
-                    <span class="data-value" style="font-weight: 700;">{{ nomer.otvetstvenniy or 'Не назначен' }}</span>
-                    {% if nomer.status.value != "Убрана" %}
-                    <button class="btn-base" hx-get="/nomera/{{ nomer.id }}/assign-staff-modal?source=details"
-                        hx-target="closest .modal-overlay" hx-swap="outerHTML"
-                        style="padding: 6px 12px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 1px solid rgba(124,58,237,0.2);">
-                        Назначить
-                    </button>
-                    {% endif %}
+        <div class="room-details-body" style="flex: 1; overflow-y: auto; padding-right: 10px; margin-bottom: 1rem;">
+            <div class="guest-data-grid" style="grid-template-columns: 1fr; gap: 1.25rem;">
+                <!-- Статус с возможностью изменения -->
+                <div class="data-item">
+                    <span class="data-label">Текущий статус (нажмите для смены)</span>
+                    <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="closest .modal-overlay"
+                        hx-swap="innerHTML">
+                        <input type="hidden" name="source" value="details">
+                        <select name="status" onchange="this.form.requestSubmit()"
+                            class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}"
+                            style="width: 100%; height: 45px; font-size: 1rem; margin-top: 5px;">
+                            <option value="Убрана" {% if nomer.status.value=="Убрана" %}selected{% endif %}>Убрана
+                            </option>
+                            <option value="Требует уборки" {% if nomer.status.value=="Требует уборки" %}selected{% endif
+                                %}>
+                                Грязная</option>
+                            <option value="На ремонте" {% if nomer.status.value=="На ремонте" %}selected{% endif %}>
+                                Ремонт
+                            </option>
+                        </select>
+                    </form>
                 </div>
-            </div>
 
-            {% if nomer.fio_zhilca %}
-            <div class="data-item">
-                <span class="data-label">Текущий жильц</span>
-                <span class="data-value" style="color: var(--accent-vibrant); font-weight: 800;">{{ nomer.fio_zhilca
-                    }}</span>
+                <div class="data-item">
+                    <span class="data-label">Характеристики</span>
+                    <span class="data-value" style="font-size: 1.1rem; font-weight: 700;">{{ nomer.kolvo_komnat }}К / {{
+                        nomer.kolvo_krovatey }}КР</span>
+                </div>
+
+                <div class="data-item">
+                    <span class="data-label">Ответственный</span>
+                    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+                        <span class="data-value" style="font-weight: 700;">{{ nomer.otvetstvenniy or 'Не назначен'
+                            }}</span>
+                        {% if nomer.status.value != "Убрана" %}
+                        <button class="btn-base" hx-get="/nomera/{{ nomer.id }}/assign-staff-modal?source=details"
+                            hx-target="closest .modal-overlay" hx-swap="outerHTML"
+                            style="padding: 6px 12px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 1px solid rgba(124,58,237,0.2);">
+                            Назначить
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if nomer.fio_zhilca %}
+                <div class="data-item">
+                    <span class="data-label">Текущий жильц</span>
+                    <span class="data-value" style="color: var(--accent-vibrant); font-weight: 800;">{{ nomer.fio_zhilca
+                        }}</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Период проживания</span>
+                    <span class="data-value">{{ format_date(nomer.data_zaezda) }} — {{ format_date(nomer.data_viezda)
+                        }}</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn-base" hx-get="/nomera/{{ nomer.id }}/guest-details?back=true"
+                        hx-target="closest .modal-content" hx-swap="innerHTML"
+                        style="width: 100%; padding: 1rem; background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 2px dashed var(--accent-vibrant); font-weight: 800; border-radius: 16px; cursor: pointer;">
+                        👁 Данные жильца
+                    </button>
+                </div>
+                {% else %}
+                <div class="data-item">
+                    <span class="data-label">Готовность</span>
+                    <span class="data-value" style="color: #10b981; font-weight: 800;">Свободен</span>
+                </div>
+                {% endif %}
             </div>
-            <div class="data-item">
-                <span class="data-label">Период проживания</span>
-                <span class="data-value">{{ format_date(nomer.data_zaezda) }} — {{ format_date(nomer.data_viezda)
-                    }}</span>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="btn-base" hx-get="/nomera/{{ nomer.id }}/guest-details?back=true"
-                    hx-target="closest .modal-content" hx-swap="innerHTML"
-                    style="width: 100%; padding: 1rem; background: rgba(124, 58, 237, 0.1); color: var(--accent-vibrant); border: 2px dashed var(--accent-vibrant); font-weight: 800; border-radius: 16px; cursor: pointer;">
-                    👁 Данные жильца
-                </button>
-            </div>
-            {% else %}
-            <div class="data-item">
-                <span class="data-label">Готовность</span>
-                <span class="data-value" style="color: #10b981; font-weight: 800;">Свободен</span>
-            </div>
-            {% endif %}
         </div>
 
-        <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+        <div class="inline-grid" style="margin-top: auto;">
             <button onclick="document.getElementById('room-details-modal').remove()" class="filter-btn"
-                style="flex: 1; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700;">
+                style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700;">
                 Закрыть
             </button>
-            <!-- Кнопка бронирования удалена по запросу -->
-
         </div>
     </div>
 </div>

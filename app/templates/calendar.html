@@ -12,45 +12,30 @@
 
 <div class="content-area">
     <!-- Top Control Block -->
-    <div class="calendar-controls-premium"
-        style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; background: var(--card-bg); padding: 2rem; border-radius: 28px; border: 1px solid var(--glass-border); box-shadow: var(--shadow-main);">
+    <div class="calendar-controls-premium">
         <!-- Month and Year Selection -->
         <div class="control-section">
-            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;">
-                Выбор периода</h3>
-            <form action="/calendar" method="get" style="display: flex; gap: 1rem; align-items: center;">
-                <select name="month" class="status-select" style="min-width: 150px; flex: 1;"
-                    onchange="this.form.submit()">
-                    {% for i in range(1, 13) %}
-                    <option value="{{ i }}" {% if i==current_month %}selected{% endif %}>{{ months_names[i-1] }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <select name="year" class="status-select" style="min-width: 100px; flex: 1;"
-                    onchange="this.form.submit()">
-                    {% for y in range(current_year-1, current_year+2) %}
-                    <option value="{{ y }}" {% if y==current_year %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </form>
+            <h3>Выбор периода</h3>
+            <div class="period-navigator">
+                <!-- Month Nav -->
+                <div class="nav-group">
+                    <a href="?month={{ 12 if current_month == 1 else current_month - 1 }}&year={{ current_year - 1 if current_month == 1 else current_year }}"
+                        class="nav-btn">‹</a>
+                    <span class="nav-label">{{ months_names[current_month-1] }}</span>
+                    <a href="?month={{ 1 if current_month == 12 else current_month + 1 }}&year={{ current_year + 1 if current_month == 12 else current_year }}"
+                        class="nav-btn">›</a>
+                </div>
+
+                <!-- Year Nav -->
+                <div class="nav-group">
+                    <a href="?month={{ current_month }}&year={{ current_year - 1 }}" class="nav-btn">‹</a>
+                    <span class="nav-label">{{ current_year }}</span>
+                    <a href="?month={{ current_month }}&year={{ current_year + 1 }}" class="nav-btn">›</a>
+                </div>
+            </div>
         </div>
 
-        <!-- Date Range Search & Scroll -->
-        <div class="control-section">
-            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;">
-                Поиск по датам</h3>
-            <div style="display: flex; gap: 1rem; align-items: center;" class="full-width-mobile">
-                <div class="input-styled" style="flex: 1;">
-                    <input type="text" id="calendarRangePicker" class="line-editor"
-                        placeholder="Выберите диапазон для перехода..." style="font-size: 1rem; padding: 0.8rem;">
-                </div>
-                <button type="button" class="add-btn-premium" onclick="scrollToSelectedRange()" style="height: 45px;">
-                    Перейти
-                </button>
-            </div>
-            <div id="selection-status"
-                style="margin-top: 10px; font-size: 0.8rem; color: var(--accent-vibrant); font-weight: 700;"></div>
-        </div>
+
     </div>
 
     <div class="table-container-modern" id="calendarScrollContainer"
@@ -83,14 +68,20 @@
                                 }}</span>
                         </div>
                     </td>
-                    {% for occupied in item.days %}
+                    {% for day_data in item.days %}
                     <td style="padding: 2px !important;"
                         class="{% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-column{% endif %}">
-                        <div class="calendar-cell {% if occupied %}occupied{% endif %} {% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-cell{% endif %}"
+                        <div class="calendar-cell {% if day_data.status > 0 %}occupied{% endif %} {% if days[loop.index0].strftime('%Y-%m-%d') == now_date %}today-cell{% endif %}"
                             data-date="{{ days[loop.index0].strftime('%Y-%m-%d') }}"
-                            id="cell-{{ item.nomer.id }}-{{ days[loop.index0].strftime('%Y-%m-%d') }}" {% if occupied %}
-                            hx-get="/nomera/{{ item.nomer.id }}/guest-details" hx-target="body" hx-swap="beforeend"
-                            style="cursor: pointer;" {% endif %}></div>
+                            id="cell-{{ item.nomer.id }}-{{ days[loop.index0].strftime('%Y-%m-%d') }}" {% if
+                            day_data.status> 0 %}
+                            hx-get="/nomera/{{ item.nomer.id }}/guest-details?date={{
+                            days[loop.index0].strftime('%Y-%m-%d') }}"
+                            hx-target="body"
+                            hx-swap="beforeend"
+                            style="cursor: pointer; {% if day_data.color %}background: {{ day_data.color }} !important;
+                            border-color: rgba(255,255,255,0.2) !important;{% endif %}"
+                            {% endif %}></div>
                     </td>
                     {% endfor %}
                 </tr>
@@ -225,59 +216,6 @@
 </style>
 
 <script>
-    let selectedStart = null;
-    let selectedEnd = null;
-
-    flatpickr("#calendarRangePicker", {
-        mode: "range",
-        dateFormat: "Y-m-d",
-        locale: "ru",
-        // defaultDate removed to keep empty on load
-        onReady: function (selectedDates, dateStr, instance) {
-            // Jump to selected month/year
-            instance.jumpToDate("{{ current_year }}-{{ current_month }}-01");
-
-            // Scroll to today on load
-            const todayHeader = document.getElementById('header-{{ now_date }}');
-            if (todayHeader) {
-                const container = document.getElementById('calendarScrollContainer');
-                const offset = todayHeader.offsetLeft - 150;
-                container.scrollLeft = offset;
-            }
-        },
-        onChange: function (selectedDates, dateStr, instance) {
-            if (selectedDates.length === 2) {
-                selectedStart = instance.formatDate(selectedDates[0], "Y-m-d");
-                selectedEnd = instance.formatDate(selectedDates[1], "Y-m-d");
-                document.getElementById('selection-status').innerText = `Выбрано: ${instance.formatDate(selectedDates[0], "d.m")} - ${instance.formatDate(selectedDates[1], "d.m")}`;
-                highlightRange();
-            }
-        }
-    });
-
-    function highlightRange() {
-        // Очистка
-        document.querySelectorAll('.calendar-cell').forEach(c => c.classList.remove('selected-day'));
-        document.querySelectorAll('.day-header').forEach(h => h.classList.remove('highlight'));
-
-        if (!selectedStart || !selectedEnd) return;
-
-        // Подсветка
-        document.querySelectorAll('.calendar-cell').forEach(c => {
-            const date = c.dataset.date;
-            if (date >= selectedStart && date <= selectedEnd) {
-                c.classList.add('selected-day');
-            }
-        });
-
-        document.querySelectorAll('.day-header').forEach(h => {
-            const date = h.dataset.date;
-            if (date >= selectedStart && date <= selectedEnd) {
-                h.classList.add('highlight');
-            }
-        });
-    }
-
     // --- Booking Logic ---
     let bookingState = {
         start: null,     // { date: "YYYY-MM-DD", roomId: "123", el: DOMElement }
@@ -439,18 +377,6 @@
     // User said: "in case of double click outside zone of this panel, it closes and resets".
     // I handled that above.
 
-    function scrollToSelectedRange() {
-        if (!selectedStart) return;
 
-        const header = document.getElementById('header-' + selectedStart);
-        if (header) {
-            const container = document.getElementById('calendarScrollContainer');
-            const offset = header.offsetLeft - 150; // Оставляем небольшой запас слева (после липкого столбца)
-            container.scrollTo({
-                left: offset,
-                behavior: 'smooth'
-            });
-        }
-    }
 </script>
 {% endblock %}

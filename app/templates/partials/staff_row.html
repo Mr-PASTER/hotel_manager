@@ -7,6 +7,8 @@
         </div>
     </td>
     <td>{{ s.full_name }}</td>
+    <td>{{ s.telegram_id or '-' }}</td>
+    <td>{{ s.phone or '-' }}</td>
     <td>
         <span
             class="badge {% if s.role == 'admin' %}badge-danger{% elif s.role == 'moderator' %}badge-primary{% elif s.role == 'worker' %}badge-problem{% elif s.role == 'cleaner' %}badge-success{% else %}badge-success{% endif %}">

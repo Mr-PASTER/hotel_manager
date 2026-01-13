@@ -9,6 +9,14 @@
                 <div style="font-weight: 600;">{{ s.username }}</div>
             </div>
             <div>
+                <small style="color: var(--text-muted);">TG ID:</small>
+                <div style="font-weight: 600;">{{ s.telegram_id or '-' }}</div>
+            </div>
+            <div>
+                <small style="color: var(--text-muted);">Телефон:</small>
+                <div style="font-weight: 600;">{{ s.phone or '-' }}</div>
+            </div>
+            <div>
                 <small style="color: var(--text-muted);">Роль:</small>
                 <div>
                     <span

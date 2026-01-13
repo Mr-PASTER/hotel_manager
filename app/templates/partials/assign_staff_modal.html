@@ -28,17 +28,14 @@
                 %}hx-on::after-request="document.getElementById('modal').remove()" {% endif %}>
                 <input type="hidden" name="source" value="{{ source }}">
                 <div class="input-styled" style="margin-bottom: 1.5rem;">
-                    <label>Выберите сотрудника ({{ target_role }})</label>
-                    <select name="otvetstvenniy" class="status-select"
-                        style="width: 100%; font-size: 1rem; padding: 1rem !important;">
-                        <option value="">Не назначен</option>
+                    <label>Назначить сотрудника</label>
+                    <input list="staff_list" name="otvetstvenniy" class="line-editor"
+                        value="{{ nomer.otvetstvenniy or '' }}" placeholder="Начните вводить имя..." autocomplete="off">
+                    <datalist id="staff_list">
                         {% for s in staff %}
-                        <option value="{{ s.full_name or s.username }}" {% if nomer.otvetstvenniy==(s.full_name or
-                            s.username) %}selected{% endif %}>
-                            {{ s.full_name or s.username }}
-                        </option>
+                        <option value="{{ s.full_name or s.username }}">{{ s.role }} ({{ s.username }})</option>
                         {% endfor %}
-                    </select>
+                    </datalist>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">

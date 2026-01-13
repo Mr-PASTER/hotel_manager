@@ -12,6 +12,7 @@
 
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <div class="container">
+        <div id="menuBackdrop" class="menu-backdrop" onclick="toggleNav()"></div>
         {% if user %}
         <div class="user-profile-bar">
             <!-- Mobile Toggle / Logo Container -->
@@ -106,6 +107,7 @@
 
         function toggleNav() {
             document.getElementById('mainNav').classList.toggle('active');
+            document.getElementById('menuBackdrop').classList.toggle('active');
         }
 
         function copyToClipboard(id) {
