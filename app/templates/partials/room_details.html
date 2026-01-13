@@ -16,7 +16,7 @@
                 <div class="data-item">
                     <span class="data-label">Текущий статус (нажмите для смены)</span>
                     <form hx-post="/nomera/{{ nomer.id }}/update" hx-target="closest .modal-overlay"
-                        hx-swap="innerHTML">
+                        hx-swap="outerHTML">
                         <input type="hidden" name="source" value="details">
                         <select name="status" onchange="this.form.requestSubmit()"
                             class="status-select {{ 'status-clean' if nomer.status.value == 'Убрана' else 'status-problem' }}"

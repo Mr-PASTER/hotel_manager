@@ -24,7 +24,7 @@
         <div class="guest-content-body">
             <form hx-post="/nomera/{{ nomer.id }}/update"
                 hx-target="{% if source == 'details' %}closest .modal-overlay{% else %}#nomer-{{ nomer.id }}{% endif %}"
-                hx-swap="{% if source == 'details' %}innerHTML{% else %}outerHTML{% endif %}" {% if source !='details'
+                hx-swap="outerHTML" {% if source !='details'
                 %}hx-on::after-request="document.getElementById('modal').remove()" {% endif %}>
                 <input type="hidden" name="source" value="{{ source }}">
                 <div class="input-styled" style="margin-bottom: 1.5rem;">

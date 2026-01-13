@@ -487,11 +487,38 @@ async def update_nomer(
         nomer.fio_bron = booking_data["guest_name"]
         nomer.telefon = booking_data["phone"]
         nomer.kommentariy = booking_data["comment"]
+        # Also set fio_zhilca for display purposes (like get_nomer_details does)
+        nomer.fio_zhilca = booking_data["guest_name"]
         setattr(nomer, "source", booking_data["source"])
 
         # Проверяем активность брони
         if booking_data["start_date"] <= today_str <= booking_data["end_date"]:
             nomer.zanyat = True
+
+    if source == "details":
+        modal_content = templates.get_template("partials/room_details.html").render(
+            {"request": request, "nomer": nomer, "StatusNomera": StatusNomera}
+        )
+
+        row_content = templates.get_template("partials/nomer_row.html").render(
+            {
+                "request": request,
+                "nomer": nomer,
+                "StatusNomera": StatusNomera,
+                "user": user,
+            }
+        )
+
+        row_content_oob = row_content.replace(
+            f'<tr id="nomer-{nomer.id}">',
+            f'<tr id="nomer-{nomer.id}" hx-swap-oob="true">',
+            1,
+        )
+
+        # Wrap OOB in hidden table to ensure valid HTML parsing for TR
+        combined_content = f'{modal_content}<div hidden style="display:none"><table><tbody>{row_content_oob}</tbody></table></div>'
+
+        return HTMLResponse(content=combined_content)
 
     return templates.TemplateResponse(
         "partials/nomer_row.html",
@@ -661,7 +688,10 @@ async def reserve_nomer(
             1,
         )
 
-        return HTMLResponse(content=modal_content + row_content_oob)
+        # Wrap OOB in hidden table to ensure valid HTML parsing for TR
+        combined_content = f'{modal_content}<div hidden style="display:none"><table><tbody>{row_content_oob}</tbody></table></div>'
+
+        return HTMLResponse(content=combined_content)
 
     return templates.TemplateResponse(
         "partials/nomer_row.html",
