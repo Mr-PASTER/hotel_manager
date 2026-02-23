@@ -1,0 +1,42 @@
+# Зависимости Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+venv/
+env/
+.env
+.venv
+
+# База данных (не коммитить в git, создастся автоматически)
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Логи
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Backend static (собирается при деплое)
+backend/static/

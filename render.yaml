@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: hotel-manager-api
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:////app/data/hotel.db
+      - key: FRONTEND_URL
+        value: https://YOUR_GITHUB_USERNAME.github.io
+      - key: PYTHON_VERSION
+        value: 3.12.0
+    disk:
+      name: hotel-data
+      mountPath: /app/data
+      sizeGB: 1
