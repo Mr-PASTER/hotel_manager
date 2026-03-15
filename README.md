@@ -55,32 +55,36 @@
 
 ---
 
-## 🚀 Деплой на Render
+## 🐳 Деплой через Docker (Рекомендуемый)
 
-### Быстрый деплой
+Проект полностью подготовлен для развёртывания через Docker. Бэкенд и фронтенд работают в изолированных контейнерах, общаясь через внутреннюю сеть. Nginx проксирует запросы и раздаёт статику, тем самым автоматически решая все возможные проблемы с CORS на продакшне.
 
-1. Создайте репозиторий на GitHub и загрузите проект
-2. Зайдите на [render.com](https://render.com) → **New → Blueprint**
-3. Укажите URL репозитория — Render автоматически прочитает `render.yaml`
-4. Создайте первого администратора через **Shell** в Render-дашборде:
+### Быстрый запуск на сервере
+
+1. **Клонируйте репозиторий** на сервер:
    ```bash
-   python create_admin.py
+   git clone https://github.com/your-username/hotel2.git
+   cd hotel2
    ```
 
-### Переменные окружения на Render
+2. **Настройте переменные окружения**:
+   Скопируйте шаблон `.env.example` для бэкенда:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+   Внутри `backend/.env` обязательно укажите ваши `SECRET_KEY` и `TELEGRAM_TOKEN`.
 
-| Переменная | Описание |
-|-----------|---------|
-| `SECRET_KEY` | JWT секрет (генерируется автоматически) |
-| `DATABASE_URL` | `sqlite:////app/data/hotel.db` (persistent disk) |
-| `RENDER` | `true` (устанавливается автоматически) |
+3. **Запустите Docker Compose**:
+   ```bash
+   docker compose up -d --build
+   ```
 
-### Persistent Disk
-В `render.yaml` уже настроен диск 1 ГБ (`/app/data`). Установите переменную:
-```
-DATABASE_URL=sqlite:////app/data/hotel.db
-```
-Это сохранит БД между деплоями.
+4. **Создайте первого администратора** (выполняется внутри контейнера бэкенда):
+   ```bash
+   docker compose exec backend python create_admin.py
+   ```
+
+Приложение будет доступно по адресу `http://<IP_вашего_сервера>` (порт 80). База данных SQLite автоматически сохраняется в Docker Volume `hotel_data`.
 
 ---
 
@@ -123,11 +127,14 @@ npm run dev
 
 ```
 hotel2/
-├── render.yaml              ← конфигурация деплоя Render
+├── docker-compose.yml       ← Оркестрация контейнеров
+├── .dockerignore
 ├── .gitignore
 ├── README.md
 │
 ├── backend/
+│   ├── Dockerfile           ← Сборка Python-контейнера
+│   ├── .env.example         ← Шаблон переменных окружения
 │   ├── main.py              ← FastAPI app, StaticFiles, middleware
 │   ├── models.py            ← SQLAlchemy модели
 │   ├── schemas.py           ← Pydantic схемы
@@ -139,7 +146,6 @@ hotel2/
 │   ├── migrate.py           ← миграции БД
 │   ├── create_admin.py      ← создание администратора
 │   ├── requirements.txt
-│   ├── start.sh             ← скрипт запуска для Render
 │   └── routers/
 │       ├── auth.py
 │       ├── rooms.py
@@ -151,6 +157,8 @@ hotel2/
 │       └── settings.py
 │
 └── frontend/
+    ├── Dockerfile           ← Сборка React/Nginx-контейнера
+    ├── nginx.conf           ← Nginx прокси для раздачи UI и API
     ├── index.html
     ├── vite.config.ts
     ├── package.json
@@ -180,4 +188,4 @@ hotel2/
 | Frontend | React 18, TypeScript, Vite, Ant Design 5, dayjs |
 | Маршрутизация | react-router-dom v6 |
 | HTTP клиент | axios |
-| Деплой | Render (Web Service + Persistent Disk) |
+| Деплой | Docker, Docker Compose, Nginx |

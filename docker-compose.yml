@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -28,8 +28,6 @@ services:
       - backend
     ports:
       - "80:80"
-    # Для разработки можно пробросить порты Vite
-    # - "5173:5173"
     networks:
       - hotel_net
 
