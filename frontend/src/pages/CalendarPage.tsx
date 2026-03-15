@@ -112,7 +112,7 @@ export default function CalendarPage() {
         const checkOut = dayjs(booking.check_out)
 
         const startDay = checkIn.isBefore(monthStart) ? monthStart : checkIn
-        const endDay = checkOut.isAfter(monthEnd) ? monthEnd : checkOut.subtract(1, 'day')
+        const endDay = checkOut.isAfter(monthEnd) ? monthEnd : checkOut
 
         const startIdx = startDay.date() - 1
         const endIdx = endDay.date() - 1
@@ -421,7 +421,7 @@ export default function CalendarPage() {
                                         if (checkOut.isBefore(monthStart, 'day') || checkIn.isAfter(monthEnd, 'day')) return null
 
                                         const startDay = checkIn.isBefore(monthStart) ? monthStart : checkIn
-                                        const endDay = checkOut.isAfter(monthEnd.add(1, 'day')) ? monthEnd : checkOut.subtract(1, 'day')
+                                        const endDay = checkOut.isAfter(monthEnd.add(1, 'day')) ? monthEnd : checkOut
 
                                         const startIdx = startDay.date() - 1
                                         const endIdx = endDay.date() - 1

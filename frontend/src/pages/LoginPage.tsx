@@ -101,6 +101,7 @@ export default function LoginPage() {
                             <Input
                                 prefix={<UserOutlined style={{ color: 'var(--text-muted)' }} />}
                                 placeholder="Логин"
+                                autoComplete="username"
                             />
                         </Form.Item>
 
@@ -111,6 +112,7 @@ export default function LoginPage() {
                             <Input.Password
                                 prefix={<LockOutlined style={{ color: 'var(--text-muted)' }} />}
                                 placeholder="Пароль"
+                                autoComplete="current-password"
                             />
                         </Form.Item>
 

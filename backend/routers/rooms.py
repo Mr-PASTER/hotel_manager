@@ -4,8 +4,11 @@ from datetime import date
 import models
 import schemas
 from telegram_bot import send_admin_log
-from database import get_db
+from nextcloud_bot import send_nc_admin_log
+from max_bot import send_max_admin_log
+from utils import get_config
 from dependencies import get_current_user
+from database import get_db
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -130,10 +133,11 @@ def update_room(
         setattr(room, key, value)
 
     if data.status and old_status != data.status:
-        background_tasks.add_task(
-            send_admin_log,
-            f"🛠 Статус номера {room.number} изменён: {old_status.value} ➡ {data.status.value}",
-        )
+        if get_config(db, "notify_room_changes") != "false":
+            msg = f"🛠 Статус номера {room.number} изменён: {old_status.value} ➡ {data.status.value}"
+            background_tasks.add_task(send_admin_log, msg)
+            background_tasks.add_task(send_nc_admin_log, msg)
+            background_tasks.add_task(send_max_admin_log, msg)
 
     db.commit()
     db.refresh(room)

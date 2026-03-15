@@ -3,22 +3,23 @@ from sqlalchemy.orm import Session
 import models
 import schemas
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_admin_user
 from routers.auth import get_password_hash
 from telegram_bot import send_admin_log
+from nextcloud_bot import send_nc_admin_log
+from max_bot import send_max_admin_log
+from utils import get_config
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
 
 @router.get("/", response_model=list[schemas.EmployeeOut])
-def get_employees(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_employees(db: Session = Depends(get_db), _=Depends(get_admin_user)):
     return db.query(models.Employee).all()
 
 
 @router.get("/{emp_id}", response_model=schemas.EmployeeOut)
-def get_employee(
-    emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)
-):
+def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     emp = db.query(models.Employee).filter(models.Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
@@ -30,7 +31,7 @@ def create_employee(
     data: schemas.EmployeeCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(get_admin_user),
 ):
     if data.username:
         existing = (
@@ -48,15 +49,18 @@ def create_employee(
         username=data.username,
         hashed_password=get_password_hash(data.password) if data.password else None,
         telegram_username=data.telegram_username,
+        nextcloud_username=data.nextcloud_username,
+        max_username=data.max_username,
     )
     db.add(emp)
     db.commit()
     db.refresh(emp)
 
-    background_tasks.add_task(
-        send_admin_log,
-        f"👤 Добавлен новый сотрудник: {emp.full_name} ({emp.role.value})",
-    )
+    if get_config(db, "notify_employee_changes") != "false":
+        msg = f"👤 Добавлен новый сотрудник: {emp.full_name} ({emp.role.value})"
+        background_tasks.add_task(send_admin_log, msg)
+        background_tasks.add_task(send_nc_admin_log, msg)
+        background_tasks.add_task(send_max_admin_log, msg)
 
     return emp
 
@@ -65,8 +69,9 @@ def create_employee(
 def update_employee(
     emp_id: int,
     data: schemas.EmployeeUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(get_admin_user),
 ):
     emp = db.query(models.Employee).filter(models.Employee.id == emp_id).first()
     if not emp:
@@ -75,6 +80,13 @@ def update_employee(
         setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
+    
+    if get_config(db, "notify_employee_changes") != "false":
+        msg = f"👤 Изменён сотрудник: {emp.full_name} ({emp.role.value})"
+        background_tasks.add_task(send_admin_log, msg)
+        background_tasks.add_task(send_nc_admin_log, msg)
+        background_tasks.add_task(send_max_admin_log, msg)
+        
     return emp
 
 
@@ -83,7 +95,7 @@ def update_credentials(
     emp_id: int,
     data: schemas.EmployeeCredentialsUpdate,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(get_admin_user),
 ):
     emp = db.query(models.Employee).filter(models.Employee.id == emp_id).first()
     if not emp:
@@ -108,7 +120,7 @@ def update_credentials(
 
 @router.delete("/{emp_id}", status_code=204)
 def delete_employee(
-    emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)
+    emp_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)
 ):
     emp = db.query(models.Employee).filter(models.Employee.id == emp_id).first()
     if not emp:

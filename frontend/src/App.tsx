@@ -22,6 +22,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth()
+    if (user?.role !== 'admin') {
+        return <Navigate to="/" replace />
+    }
+    return <>{children}</>
+}
+
 function AppRoutes() {
     const { isAuthenticated, loading } = useAuth()
 
@@ -44,10 +52,10 @@ function AppRoutes() {
                 }
             >
                 <Route path="/" element={<RoomsPage />} />
-                <Route path="/employees" element={<EmployeesPage />} />
-                <Route path="/guests" element={<GuestsPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/employees" element={<AdminRoute><EmployeesPage /></AdminRoute>} />
+                <Route path="/guests" element={<AdminRoute><GuestsPage /></AdminRoute>} />
+                <Route path="/calendar" element={<AdminRoute><CalendarPage /></AdminRoute>} />
+                <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

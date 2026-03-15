@@ -16,13 +16,6 @@ import { useAuth } from '../contexts/AuthContext'
 
 const { Sider, Content, Header } = Layout
 
-const menuItems = [
-    { key: '/', icon: <HomeOutlined />, label: 'Номера' },
-    { key: '/employees', icon: <TeamOutlined />, label: 'Сотрудники' },
-    { key: '/guests', icon: <UserOutlined />, label: 'Гости' },
-    { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
-]
-
 const roleLabels: Record<string, string> = {
     admin: 'Администратор',
     cleaner: 'Уборщик',
@@ -48,7 +41,7 @@ export default function MainLayout() {
     }
 
     return (
-        <Layout style={{ height: '100vh' }}>
+        <Layout style={{ minHeight: '100dvh' }}>
             <Sider
                 breakpoint="md"
                 collapsedWidth="0"
@@ -99,8 +92,15 @@ export default function MainLayout() {
                     selectedKeys={[location.pathname]}
                     onClick={({ key }) => navigate(key)}
                     items={[
-                        ...menuItems,
-                        ...(user?.role === 'admin' ? [{ key: '/settings', icon: <SettingOutlined />, label: 'Настройки' }] : []),
+                        // Номера доступны всем
+                        { key: '/', icon: <HomeOutlined />, label: 'Номера' },
+                        // Остальные пункты — только для админов
+                        ...(user?.role === 'admin' ? [
+                            { key: '/employees', icon: <TeamOutlined />, label: 'Сотрудники' },
+                            { key: '/guests', icon: <UserOutlined />, label: 'Гости' },
+                            { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
+                            { key: '/settings', icon: <SettingOutlined />, label: 'Настройки' },
+                        ] : []),
                     ]}
                     style={{
                         marginTop: 8,

@@ -260,7 +260,7 @@ export default function RoomsPage() {
             <Row gutter={16} style={{ marginBottom: 24 }}>
                 {Object.entries(statusConfig).map(([key, cfg]) => (
                     <Col key={key} xs={24} sm={12} md={6}>
-                        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setFilterStatus(filterStatus === key ? '' : key)}>
+                        <div className="stat-card" style={{ cursor: 'pointer', marginTop: 10 }} onClick={() => setFilterStatus(filterStatus === key ? '' : key)}>
                             <div className="stat-icon" style={{ background: `${cfg.color}18` }}>
                                 <span style={{ fontSize: 20 }}>
                                     {key === 'free' ? '✓' : key === 'occupied' ? '🏠' : key === 'booked' ? '📅' : key === 'cleaning' ? '🧹' : '🔧'}
@@ -413,25 +413,56 @@ export default function RoomsPage() {
                     ) : (
                         assignments.map(a => (
                             <div key={a.id} style={{
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border)',
+                                background: a.completed ? 'rgba(76,175,130,0.06)' : 'var(--bg-card)',
+                                border: `1px solid ${a.completed ? 'rgba(76,175,130,0.3)' : 'var(--border)'}`,
                                 borderRadius: 10,
                                 padding: '12px 16px',
                                 marginBottom: 10,
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
                             }}>
-                                <div>
-                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{a.employee_full_name}</div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
-                                        {dayjs(a.date).format('DD.MM.YYYY')} · {a.type === 'cleaning' ? 'Уборка' : 'Ремонт'}
-                                        {a.note && ` · ${a.note}`}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{a.employee_full_name}</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
+                                            {dayjs(a.date).format('DD.MM.YYYY')} · {a.type === 'cleaning' ? 'Уборка' : 'Ремонт'}
+                                            {a.note && ` · ${a.note}`}
+                                        </div>
                                     </div>
+                                    <Space>
+                                        {a.completed ? (
+                                            <Tag style={{
+                                                background: 'rgba(76,175,130,0.1)',
+                                                border: '1px solid rgba(76,175,130,0.3)',
+                                                color: 'var(--success)',
+                                            }}>
+                                                ✅ {a.completed_at ? dayjs(a.completed_at).format('DD.MM HH:mm') : 'Завершено'}
+                                            </Tag>
+                                        ) : (
+                                            <Popconfirm
+                                                title="Отметить задание как завершённое?"
+                                                onConfirm={async () => {
+                                                    try {
+                                                        await assignmentsApi.complete(a.id)
+                                                        const updated = await assignmentsApi.getAll({ room_id: selectedRoom!.id })
+                                                        setAssignments(updated)
+                                                        message.success('Задание завершено!')
+                                                        load()
+                                                    } catch (e: any) {
+                                                        message.error(e?.response?.data?.detail || 'Ошибка')
+                                                    }
+                                                }}
+                                                okText="Да"
+                                                cancelText="Нет"
+                                            >
+                                                <Button type="primary" size="small" ghost style={{ borderRadius: 6, fontSize: 12 }}>
+                                                    Завершить
+                                                </Button>
+                                            </Popconfirm>
+                                        )}
+                                        <Popconfirm title="Удалить?" onConfirm={() => handleDeleteAssignment(a.id)} okText="Да" cancelText="Нет">
+                                            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
+                                        </Popconfirm>
+                                    </Space>
                                 </div>
-                                <Popconfirm title="Удалить?" onConfirm={() => handleDeleteAssignment(a.id)} okText="Да" cancelText="Нет">
-                                    <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-                                </Popconfirm>
                             </div>
                         ))
                     )}

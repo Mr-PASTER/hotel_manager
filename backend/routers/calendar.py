@@ -5,7 +5,7 @@ from datetime import date
 import models
 import schemas
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_admin_user
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -16,7 +16,7 @@ def get_calendar(
     end: Optional[date] = None,
     room_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(get_admin_user),
 ):
     query = db.query(models.Booking).filter(
         models.Booking.status != models.BookingStatus.cancelled

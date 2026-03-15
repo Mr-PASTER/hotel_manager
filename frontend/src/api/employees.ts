@@ -9,6 +9,8 @@ export interface Employee {
     username: string | null
     telegram_username: string | null
     nextcloud_username: string | null
+    max_username: string | null
+    notification_preference: 'telegram' | 'nextcloud' | 'max' | 'all'
 }
 
 export interface EmployeeCreate {
@@ -20,6 +22,8 @@ export interface EmployeeCreate {
     password?: string
     telegram_username?: string
     nextcloud_username?: string
+    max_username?: string
+    notification_preference?: 'telegram' | 'nextcloud' | 'max' | 'all'
 }
 
 export const employeesApi = {

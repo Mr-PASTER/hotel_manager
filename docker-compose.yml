@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hotel_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    # Порт 8000 пробрасываем наружу, если хотим ходить в API напрямую
+    # Но для Nginx он доступен внутри сети hotel_net
+    ports:
+      - "8000:8000"
+    volumes:
+      - hotel_data:/app/data
+    networks:
+      - hotel_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hotel_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    # Для разработки можно пробросить порты Vite
+    # - "5173:5173"
+    networks:
+      - hotel_net
+
+volumes:
+  hotel_data:
+    name: hotel_data
+
+networks:
+  hotel_net:
+    name: hotel_net
+    driver: bridge

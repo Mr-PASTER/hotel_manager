@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Form, Input, Button, message, Spin, Row, Col, Typography, Divider } from 'antd'
-import { SaveOutlined, SettingOutlined, CloudServerOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, message, Spin, Row, Col, Typography, Divider, Checkbox } from 'antd'
+import { SaveOutlined, SettingOutlined, CloudServerOutlined, MessageOutlined, BellOutlined, EditOutlined } from '@ant-design/icons'
 import api from '../api/client'
 
 const { Title, Text } = Typography
@@ -18,8 +18,30 @@ export default function SettingsPage() {
         setLoading(true)
         try {
             const { data } = await api.get<AppConfig[]>('/settings')
-            const initialValues: Record<string, string> = {}
-            data.forEach(cfg => { initialValues[cfg.key] = cfg.value })
+            const initialValues: Record<string, any> = {}
+            data.forEach(cfg => {
+                if (['notify_assignment_created', 'notify_assignment_completed', 'notify_room_changes', 'notify_employee_changes', 'notify_reminders'].includes(cfg.key)) {
+                    initialValues[cfg.key] = cfg.value === 'true'
+                } else {
+                    initialValues[cfg.key] = cfg.value
+                }
+            })
+            
+            // Default templates if not set
+            const templates = [
+                'template_assignment_group',
+                'template_assignment_personal',
+                'template_assignment_completed',
+                'template_reminder'
+            ]
+            templates.forEach(t => {
+                if (!initialValues[t]) {
+                    if (t === 'template_assignment_group') initialValues[t] = "🏨 Новое назначение для {name}:\nНомер #{number}, тип: {type}\n📅 Дата: {date}"
+                    if (t === 'template_assignment_personal') initialValues[t] = "Вам назначена новая задача!\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
+                    if (t === 'template_assignment_completed') initialValues[t] = "✅ Задание завершено!\nСотрудник: {name}\nНомер: #{number}\nЗавершено: {date}"
+                    if (t === 'template_reminder') initialValues[t] = "⏰ Напоминание! Сегодня ваш день выхода:\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
+                }
+            })
             form.setFieldsValue(initialValues)
         } catch (e) {
             message.error('Ошибка загрузки настроек')
@@ -76,7 +98,7 @@ export default function SettingsPage() {
                                 label="Bot Token (Токен бота)"
                                 extra="Выдается в BotFather при создании"
                             >
-                                <Input.Password placeholder="123456789:ABCDefgh..." />
+                                <Input.Password placeholder="123456789:ABCDefgh..." autoComplete="off" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
@@ -128,7 +150,7 @@ export default function SettingsPage() {
                                 label="Пароль бота"
                                 extra="Пароль аккаунта или App Password"
                             >
-                                <Input.Password placeholder="••••••••" />
+                                <Input.Password placeholder="••••••••" autoComplete="off" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
@@ -138,6 +160,133 @@ export default function SettingsPage() {
                                 extra="Токен комнаты для системных логов (из URL чата)"
                             >
                                 <Input placeholder="abc123def456" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    {/* ── MAX ────────────────────────────────────── */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
+                        <div style={{ width: 40, height: 40, background: 'var(--success)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <MessageOutlined style={{ fontSize: 20, color: '#fff' }} />
+                        </div>
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>MAX интеграция</Title>
+                            <Text style={{ color: 'var(--text-muted)' }}>Новый русский мессенджер</Text>
+                        </div>
+                    </div>
+
+                    <Divider style={{ borderColor: 'var(--border)' }} />
+
+                    <Row gutter={24}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                name="max_bot_token"
+                                label="Bot Token (Токен бота MAX)"
+                                extra="Токен бота для доступа к API MAX"
+                            >
+                                <Input.Password placeholder="Введите токен..." autoComplete="off" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                name="max_group_chat_id"
+                                label="MAX Group Chat ID"
+                                extra="ID группы, куда отправлять общие логи"
+                            >
+                                <Input placeholder="chat123abc" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    {/* ── События уведомлений (Триггеры) ───────────── */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
+                        <div style={{ width: 40, height: 40, background: 'var(--warning)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <BellOutlined style={{ fontSize: 20, color: '#fff' }} />
+                        </div>
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>События уведомлений</Title>
+                            <Text style={{ color: 'var(--text-muted)' }}>Выберите, о каких событиях отправлять уведомления</Text>
+                        </div>
+                    </div>
+
+                    <Divider style={{ borderColor: 'var(--border)' }} />
+
+                    <Row gutter={24}>
+                        <Col xs={12} sm={8}>
+                            <Form.Item name="notify_assignment_created" valuePropName="checked">
+                                <Checkbox>Новые назначения</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} sm={8}>
+                            <Form.Item name="notify_assignment_completed" valuePropName="checked">
+                                <Checkbox>Завершения назначений</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} sm={8}>
+                            <Form.Item name="notify_room_changes" valuePropName="checked">
+                                <Checkbox>Изменение статуса номеров</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} sm={8}>
+                            <Form.Item name="notify_employee_changes" valuePropName="checked">
+                                <Checkbox>Изменения сотрудников</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} sm={8}>
+                            <Form.Item name="notify_reminders" valuePropName="checked">
+                                <Checkbox>Ежедневные напоминания</Checkbox>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    
+                    {/* ── Шаблоны сообщений ──────────────────────── */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
+                        <div style={{ width: 40, height: 40, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <EditOutlined style={{ fontSize: 20, color: '#1a1000' }} />
+                        </div>
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>Шаблоны сообщений</Title>
+                            <Text style={{ color: 'var(--text-muted)' }}>Настройте текст уведомлений (используйте {`{name}, {number}, {type}, {date}, {note}`})</Text>
+                        </div>
+                    </div>
+
+                    <Divider style={{ borderColor: 'var(--border)' }} />
+
+                    <Row gutter={24}>
+                        <Col span={24}>
+                            <Form.Item 
+                                name="template_assignment_group" 
+                                label="Новое назначение (в группу)"
+                                extra="Переменные: {name}, {number}, {type}, {date}"
+                            >
+                                <Input.TextArea rows={3} placeholder="🏨 Новое назначение для {name}..." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={24}>
+                            <Form.Item 
+                                name="template_assignment_personal" 
+                                label="Новое назначение (личное)"
+                                extra="Переменные: {number}, {type}, {date}"
+                            >
+                                <Input.TextArea rows={3} placeholder="Вам назначена новая задача!.." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={24}>
+                            <Form.Item 
+                                name="template_assignment_completed" 
+                                label="Завершение задания (в логи)"
+                                extra="Переменные: {name}, {number}, {date}"
+                            >
+                                <Input.TextArea rows={3} placeholder="✅ Задание завершено!.." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={24}>
+                            <Form.Item 
+                                name="template_reminder" 
+                                label="Ежедневное напоминание"
+                                extra="Переменные: {number}, {type}, {date}"
+                            >
+                                <Input.TextArea rows={3} placeholder="⏰ Напоминание!.." />
                             </Form.Item>
                         </Col>
                     </Row>

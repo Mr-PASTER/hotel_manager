@@ -2,7 +2,7 @@ import asyncio
 import os
 import models
 from database import engine
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     assignments,
@@ -14,9 +14,9 @@ from routers import (
     rooms,
     settings,
 )
-from routers.auth import create_access_token
 from contextlib import asynccontextmanager
 from telegram_bot import start_bot
+from scheduler import scheduler_loop
 
 # Ссылка на frontend (задаётся через env на Render)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
@@ -27,56 +27,28 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Запускаем поллинг бота в фоне при старте приложения
+    # Запускаем поллинг бота и планировщик в фоне при старте приложения
     bot_task = asyncio.create_task(start_bot())
+    scheduler_task = asyncio.create_task(scheduler_loop())
     yield
     bot_task.cancel()
+    scheduler_task.cancel()
 
 
 app = FastAPI(title="Hotel Manager API", lifespan=lifespan, version="1.0.0")
 
 
-# Token Rotation Middleware
-@app.middleware("http")
-async def rotate_token_middleware(request: Request, call_next):
-    # Call the next function to process the request
-    response = await call_next(request)
-
-    # If the user was authenticated, generate a new token
-    # Use user_data dict instead of SQLAlchemy object to avoid DetachedInstanceError
-    if hasattr(request.state, "user_data") and request.state.user_data:
-        user_data = request.state.user_data
-        new_token = create_access_token(
-            data={
-                "sub": user_data["username"],
-                "role": user_data["role"],
-                "id": user_data["id"],
-            }
-        )
-        # Set in Header (for visibility/existing clients)
-        response.headers["X-New-Token"] = new_token
-
-        # Set in Cookie (for automatic browser handling)
-        response.set_cookie(
-            key="access_token",
-            value=new_token,
-            httponly=True,
-            max_age=3600,  # 1 hour
-            # samesite=none + secure обязательны при разных доменах (GitHub Pages + Render)
-            samesite="none",
-            secure=True,
-            path="/",
-        )
-
-    return response
-
-
-# CORS — разрешаем локальную разработку + GitHub Pages
+# CORS — разрешаем локальную разработку + GitHub Pages + Docker Server
 _allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://193.169.11.185:5174",
+    "http://193.169.11.185:5173",
+    "http://193.169.11.185", # Адрес сервера в проде (Docker)
 ]
 if FRONTEND_URL:
     _allowed_origins.append(FRONTEND_URL)

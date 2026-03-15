@@ -1,0 +1,24 @@
+# Backend
+backend/venv/
+backend/env/
+backend/.env
+backend/.venv
+backend/__pycache__/
+backend/*.pyc
+backend/*.db
+backend/*.sqlite3
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.vite/
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -57,3 +57,13 @@ def get_current_user(
     }
     request.state.user = employee
     return employee
+
+
+def get_admin_user(user: models.Employee = Depends(get_current_user)):
+    """Зависимость, которая разрешает доступ только администраторам."""
+    if user.role != models.EmployeeRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только для администраторов",
+        )
+    return user

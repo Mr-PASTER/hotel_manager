@@ -1,17 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 import models
 import schemas
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_admin_user
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
-
-
-def get_admin_user(user: models.Employee = Depends(get_current_user)):
-    if user.role != models.EmployeeRole.admin:
-        raise HTTPException(status_code=403, detail="Только для администраторов")
-    return user
 
 
 @router.get("/", response_model=list[schemas.AppConfigOut])

@@ -1,7 +1,14 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date
-from models import RoomType, RoomStatus, EmployeeRole, BookingStatus, AssignmentType
+from datetime import date, datetime
+from models import (
+    RoomType,
+    RoomStatus,
+    EmployeeRole,
+    BookingStatus,
+    AssignmentType,
+    NotificationPreference,
+)
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -53,6 +60,8 @@ class EmployeeBase(BaseModel):
     active: bool = True
     telegram_username: Optional[str] = None
     nextcloud_username: Optional[str] = None
+    max_username: Optional[str] = None
+    notification_preference: NotificationPreference = NotificationPreference.all
 
 
 class EmployeeCreate(EmployeeBase):
@@ -67,6 +76,8 @@ class EmployeeUpdate(BaseModel):
     active: Optional[bool] = None
     telegram_username: Optional[str] = None
     nextcloud_username: Optional[str] = None
+    max_username: Optional[str] = None
+    notification_preference: Optional[NotificationPreference] = None
 
 
 class EmployeeCredentialsUpdate(BaseModel):
@@ -161,6 +172,8 @@ class AssignmentCreate(AssignmentBase):
 class AssignmentOut(AssignmentBase):
     id: int
     employee_full_name: Optional[str] = None
+    completed: bool = False
+    completed_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
 
 
@@ -178,3 +191,14 @@ class AppConfigUpdate(BaseModel):
     nc_bot_user: Optional[str] = None
     nc_bot_password: Optional[str] = None
     nc_room_token: Optional[str] = None
+    max_bot_token: Optional[str] = None
+    max_group_chat_id: Optional[str] = None
+    notify_assignment_created: Optional[bool] = None
+    notify_assignment_completed: Optional[bool] = None
+    notify_room_changes: Optional[bool] = None
+    notify_employee_changes: Optional[bool] = None
+    notify_reminders: Optional[bool] = None
+    template_assignment_group: Optional[str] = None
+    template_assignment_personal: Optional[str] = None
+    template_assignment_completed: Optional[str] = None
+    template_reminder: Optional[str] = None

@@ -127,10 +127,14 @@ body,
 }
 
 .ant-input,
-.ant-input-affix-wrapper,
-.ant-select-selector,
-.ant-input-number,
-.ant-picker {
+-.ant-input-affix-wrapper,
+-.ant-select-selector,
+-.ant-input-number,
+-.ant-picker {
++.ant-input-affix-wrapper,
++.ant-select-selector,
++.ant-input-number,
++.ant-picker {
   background: var(--bg-base) !important;
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
@@ -302,11 +306,11 @@ body,
 
 /* Mobile Scale Adjustments */
 @media (max-width: 768px) {
-
   html,
   body,
   #root {
-    zoom: 0.85;
+    min-height: 100dvh;
+    height: auto;
   }
 
   .hide-on-mobile {

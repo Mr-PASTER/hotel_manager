@@ -12,7 +12,7 @@ from dependencies import get_current_user
 
 SECRET_KEY = "hotel-secret-key-change-in-production-2024"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -82,7 +82,7 @@ def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        max_age=3600,  # 1 hour
+        max_age=86400,  # 24 hours
         samesite="lax",
         path="/",
     )

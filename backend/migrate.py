@@ -31,12 +31,45 @@ def run_migration():
         else:
             print("nextcloud_username already exists in employees.")
 
-        # In SQLite, dropping a column is complex.
-        # Standard approach requires re-creating the table.
-        # However, SQLAlchemy will just ignore the column if we remove it from the model.
-        # So we don't strictly *need* to drop `group_size` from `guests` right now for it to work.
-        # But for cleanliness, we will leave it as an unused artifact in the guests table,
-        # or we could do the full table rebuild. Since we don't want to risk data loss, ignoring is safest.
+        # Migrate employees table: add max_username
+        if "max_username" not in emp_columns:
+            print("Adding max_username to employees table...")
+            cursor.execute("ALTER TABLE employees ADD COLUMN max_username TEXT;")
+            print("Successfully added max_username to employees.")
+        else:
+            print("max_username already exists in employees.")
+
+        # Migrate employees table: add notification_preference
+        if "notification_preference" not in emp_columns:
+            print("Adding notification_preference to employees table...")
+            cursor.execute(
+                "ALTER TABLE employees ADD COLUMN notification_preference VARCHAR DEFAULT 'all';"
+            )
+            print("Successfully added notification_preference to employees.")
+        else:
+            print("notification_preference already exists in employees.")
+
+        # Migrate room_assignments table: add completed and completed_at
+        cursor.execute("PRAGMA table_info(room_assignments);")
+        assign_columns = [row[1] for row in cursor.fetchall()]
+
+        if "completed" not in assign_columns:
+            print("Adding completed to room_assignments table...")
+            cursor.execute(
+                "ALTER TABLE room_assignments ADD COLUMN completed BOOLEAN DEFAULT 0;"
+            )
+            print("Successfully added completed to room_assignments.")
+        else:
+            print("completed already exists in room_assignments.")
+
+        if "completed_at" not in assign_columns:
+            print("Adding completed_at to room_assignments table...")
+            cursor.execute(
+                "ALTER TABLE room_assignments ADD COLUMN completed_at DATETIME;"
+            )
+            print("Successfully added completed_at to room_assignments.")
+        else:
+            print("completed_at already exists in room_assignments.")
 
         conn.commit()
     except Exception as e:

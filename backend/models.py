@@ -1,4 +1,13 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Enum
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Enum,
+)
 from sqlalchemy.orm import relationship
 import enum
 from database import Base
@@ -35,6 +44,13 @@ class AssignmentType(str, enum.Enum):
     repair = "repair"
 
 
+class NotificationPreference(str, enum.Enum):
+    telegram = "telegram"
+    nextcloud = "nextcloud"
+    max = "max"
+    all = "all"
+
+
 class Room(Base):
     __tablename__ = "rooms"
 
@@ -65,6 +81,10 @@ class Employee(Base):
     hashed_password = Column(String, nullable=True)
     telegram_username = Column(String, nullable=True)
     nextcloud_username = Column(String, nullable=True)
+    max_username = Column(String, nullable=True)
+    notification_preference = Column(
+        Enum(NotificationPreference), default=NotificationPreference.all
+    )
 
     assignments = relationship(
         "RoomAssignment", back_populates="employee", cascade="all, delete-orphan"
@@ -108,6 +128,8 @@ class RoomAssignment(Base):
     date = Column(Date, nullable=False)
     type = Column(Enum(AssignmentType), nullable=False)
     note = Column(String, default="")
+    completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
 
     room = relationship("Room", back_populates="assignments")
     employee = relationship("Employee", back_populates="assignments")
