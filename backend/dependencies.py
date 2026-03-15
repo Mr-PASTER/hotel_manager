@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -6,7 +7,7 @@ from jose import JWTError, jwt
 import models
 from database import get_db
 
-SECRET_KEY = "hotel-secret-key-change-in-production-2024"
+SECRET_KEY = os.environ.get("SECRET_KEY", "hotel-secret-key-change-in-production-2024")
 ALGORITHM = "HS256"
 
 security = HTTPBearer(auto_error=False)

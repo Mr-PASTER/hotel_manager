@@ -72,7 +72,7 @@
    ```bash
    cp backend/.env.example backend/.env
    ```
-   Внутри `backend/.env` обязательно укажите ваши `SECRET_KEY` и `TELEGRAM_TOKEN`.
+   Внутри `backend/.env` желательно сменить `SECRET_KEY` на ваш собственный случайный ключ. Токен Telegram бота и другие настройки нужно будет заполнить через веб-интерфейс в разделе "Настройки".
 
 3. **Запустите Docker Compose**:
    ```bash
