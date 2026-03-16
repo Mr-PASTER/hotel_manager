@@ -244,33 +244,24 @@ export default function CalendarPage() {
             </div>
 
             {/* Month navigator */}
-            <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 16,
-                marginBottom: 20,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                padding: '12px 20px',
-                width: 'fit-content',
-            }}>
-                <Button
-                    type="text"
-                    icon={<LeftOutlined />}
-                    onClick={() => setCurrentDate(d => d.subtract(1, 'month'))}
-                    style={{ color: 'var(--text-primary)' }}
-                />
-                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', minWidth: 200, textAlign: 'center', textTransform: 'capitalize' }}>
-                    {currentDate.format('MMMM YYYY')}
+            <div className="month-navigator">
+                <div className="month-label-group">
+                    <Button
+                        type="text"
+                        icon={<LeftOutlined />}
+                        onClick={() => setCurrentDate(d => d.subtract(1, 'month'))}
+                        style={{ color: 'var(--text-primary)' }}
+                    />
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', minWidth: 120, textAlign: 'center', textTransform: 'capitalize' }}>
+                        {currentDate.format('MMMM YYYY')}
+                    </div>
+                    <Button
+                        type="text"
+                        icon={<RightOutlined />}
+                        onClick={() => setCurrentDate(d => d.add(1, 'month'))}
+                        style={{ color: 'var(--text-primary)' }}
+                    />
                 </div>
-                <Button
-                    type="text"
-                    icon={<RightOutlined />}
-                    onClick={() => setCurrentDate(d => d.add(1, 'month'))}
-                    style={{ color: 'var(--text-primary)' }}
-                />
                 <Button
                     size="small"
                     onClick={() => setCurrentDate(dayjs())}

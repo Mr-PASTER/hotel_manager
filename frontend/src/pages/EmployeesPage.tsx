@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import {
     Table, Button, Modal, Form, Input, Select, Tag,
-    Space, Popconfirm, Tooltip, Switch, message, Divider, Radio
+    Space, Popconfirm, Tooltip, Switch, message, Divider, Radio,
+    Row, Col
 } from 'antd'
 import {
     PlusOutlined, EditOutlined, DeleteOutlined,
@@ -218,26 +219,26 @@ export default function EmployeesPage() {
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+            <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
                 {[
                     { label: 'Всего активных', value: stats.total, color: 'var(--success)' },
                     { label: 'Администраторы', value: stats.admin, color: 'var(--primary)' },
                     { label: 'Уборщики', value: stats.cleaner, color: 'var(--info)' },
                     { label: 'Ремонтники', value: stats.repair, color: 'var(--warning)' },
                 ].map(s => (
-                    <div key={s.label} className="stat-card" style={{ flex: 1 }}>
-                        <div className="stat-icon" style={{ background: `${s.color}18` }}>
-                            <span style={{ fontSize: 18, color: s.color }}>
-                                {s.label.includes('Всего') ? '👥' : s.label.includes('Адм') ? '👑' : s.label.includes('Уб') ? '🧹' : '🔧'}
-                            </span>
-                        </div>
-                        <div>
+                    <Col key={s.label} xs={12} sm={12} md={6}>
+                        <div className="stat-card" style={{ cursor: 'default' }}>
+                            <div className="stat-icon" style={{ background: `${s.color}18` }}>
+                                <span style={{ fontSize: 16, color: s.color }}>
+                                    {s.label.includes('Всего') ? '👥' : s.label.includes('Адм') ? '👑' : s.label.includes('Уб') ? '🧹' : '🔧'}
+                                </span>
+                            </div>
                             <div className="stat-value">{s.value}</div>
                             <div className="stat-label" style={{ color: s.color }}>{s.label}</div>
                         </div>
-                    </div>
+                    </Col>
                 ))}
-            </div>
+            </Row>
 
             {/* Filters */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>

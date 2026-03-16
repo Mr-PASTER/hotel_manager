@@ -257,19 +257,17 @@ export default function RoomsPage() {
             </div>
 
             {/* Stats */}
-            <Row gutter={16} style={{ marginBottom: 24 }}>
+            <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
                 {Object.entries(statusConfig).map(([key, cfg]) => (
-                    <Col key={key} xs={24} sm={12} md={6}>
+                    <Col key={key} xs={12} sm={12} md={6}>
                         <div className="stat-card" style={{ cursor: 'pointer', marginTop: 10 }} onClick={() => setFilterStatus(filterStatus === key ? '' : key)}>
                             <div className="stat-icon" style={{ background: `${cfg.color}18` }}>
                                 <span style={{ fontSize: 20 }}>
                                     {key === 'free' ? '✓' : key === 'occupied' ? '🏠' : key === 'booked' ? '📅' : key === 'cleaning' ? '🧹' : '🔧'}
                                 </span>
                             </div>
-                            <div>
-                                <div className="stat-value">{stats[key as keyof typeof stats]}</div>
-                                <div className="stat-label" style={{ color: cfg.color }}>{cfg.label}</div>
-                            </div>
+                            <div className="stat-value">{stats[key as keyof typeof stats]}</div>
+                            <div className="stat-label" style={{ color: cfg.color }}>{cfg.label}</div>
                         </div>
                     </Col>
                 ))}

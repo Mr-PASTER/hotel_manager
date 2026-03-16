@@ -90,7 +90,12 @@ export default function MainLayout() {
                     mode="inline"
                     theme="dark"
                     selectedKeys={[location.pathname]}
-                    onClick={({ key }) => navigate(key)}
+                    onClick={({ key }) => {
+                        navigate(key)
+                        if (window.innerWidth <= 768) {
+                            setCollapsed(true)
+                        }
+                    }}
                     items={[
                         // Номера доступны всем
                         { key: '/', icon: <HomeOutlined />, label: 'Номера' },
