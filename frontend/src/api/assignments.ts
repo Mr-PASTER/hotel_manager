@@ -14,10 +14,10 @@ export interface Assignment {
 
 export const assignmentsApi = {
     getAll: (params?: { room_id?: number; employee_id?: number }) =>
-        api.get<Assignment[]>('/assignments', { params }).then(r => r.data),
+        api.get<Assignment[]>('/assignments/', { params }).then(r => r.data),
     create: (data: Omit<Assignment, 'id' | 'employee_full_name' | 'completed' | 'completed_at'>) =>
-        api.post<Assignment>('/assignments', data).then(r => r.data),
+        api.post<Assignment>('/assignments/', data).then(r => r.data),
     complete: (id: number) =>
-        api.post<Assignment>(`/assignments/${id}/complete`).then(r => r.data),
-    delete: (id: number) => api.delete(`/assignments/${id}`),
+        api.post<Assignment>(`/assignments/${id}/complete/`).then(r => r.data),
+    delete: (id: number) => api.delete(`/assignments/${id}/`),
 }

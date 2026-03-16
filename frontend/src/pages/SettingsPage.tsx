@@ -20,8 +20,8 @@ export default function SettingsPage() {
             const { data } = await api.get<AppConfig[]>('/settings')
             const initialValues: Record<string, any> = {}
             data.forEach(cfg => {
-                if (['notify_assignment_created', 'notify_assignment_completed', 'notify_room_changes', 'notify_employee_changes', 'notify_reminders'].includes(cfg.key)) {
-                    initialValues[cfg.key] = cfg.value === 'true'
+                if (['tg_enabled', 'nc_enabled', 'max_enabled', 'notify_assignment_created', 'notify_assignment_completed', 'notify_room_changes', 'notify_employee_changes', 'notify_reminders'].includes(cfg.key)) {
+                    initialValues[cfg.key] = cfg.value !== 'false' // default to true if missing or non-false
                 } else {
                     initialValues[cfg.key] = cfg.value
                 }
@@ -92,6 +92,13 @@ export default function SettingsPage() {
                     <Divider style={{ borderColor: 'var(--border)' }} />
 
                     <Row gutter={24}>
+                        <Col span={24} style={{ marginBottom: 16 }}>
+                            <Form.Item name="tg_enabled" valuePropName="checked" style={{ margin: 0 }}>
+                                <Checkbox><Text strong>Включить отправку уведомлений в Telegram</Text></Checkbox>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={24}>
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 name="tg_bot_token"
@@ -125,6 +132,13 @@ export default function SettingsPage() {
 
                     <Divider style={{ borderColor: 'var(--border)' }} />
 
+                    <Row gutter={24}>
+                        <Col span={24} style={{ marginBottom: 16 }}>
+                            <Form.Item name="nc_enabled" valuePropName="checked" style={{ margin: 0 }}>
+                                <Checkbox><Text strong>Включить отправку уведомлений в NextCloud Talk</Text></Checkbox>
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Row gutter={24}>
                         <Col xs={24} sm={12}>
                             <Form.Item
@@ -177,6 +191,13 @@ export default function SettingsPage() {
 
                     <Divider style={{ borderColor: 'var(--border)' }} />
 
+                    <Row gutter={24}>
+                        <Col span={24} style={{ marginBottom: 16 }}>
+                            <Form.Item name="max_enabled" valuePropName="checked" style={{ margin: 0 }}>
+                                <Checkbox><Text strong>Включить отправку уведомлений в MAX</Text></Checkbox>
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Row gutter={24}>
                         <Col xs={24} sm={12}>
                             <Form.Item

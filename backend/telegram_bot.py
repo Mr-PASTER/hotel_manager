@@ -14,6 +14,9 @@ bot: Bot | None = None
 def get_tg_config():
     db = SessionLocal()
     try:
+        enabled = get_config(db, "tg_enabled")
+        if enabled == "false":
+            return None, None
         token = get_config(db, "tg_bot_token")
         chat_id = get_config(db, "tg_group_chat_id")
         return token, chat_id

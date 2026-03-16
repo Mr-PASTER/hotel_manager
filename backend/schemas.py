@@ -185,12 +185,15 @@ class AppConfigOut(BaseModel):
 
 
 class AppConfigUpdate(BaseModel):
+    tg_enabled: Optional[bool] = None
     tg_bot_token: Optional[str] = None
     tg_group_chat_id: Optional[str] = None
+    nc_enabled: Optional[bool] = None
     nc_url: Optional[str] = None
     nc_bot_user: Optional[str] = None
     nc_bot_password: Optional[str] = None
     nc_room_token: Optional[str] = None
+    max_enabled: Optional[bool] = None
     max_bot_token: Optional[str] = None
     max_group_chat_id: Optional[str] = None
     notify_assignment_created: Optional[bool] = None

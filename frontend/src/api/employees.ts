@@ -27,11 +27,11 @@ export interface EmployeeCreate {
 }
 
 export const employeesApi = {
-    getAll: () => api.get<Employee[]>('/employees').then(r => r.data),
-    getOne: (id: number) => api.get<Employee>(`/employees/${id}`).then(r => r.data),
-    create: (data: EmployeeCreate) => api.post<Employee>('/employees', data).then(r => r.data),
-    update: (id: number, data: Partial<EmployeeCreate>) => api.put<Employee>(`/employees/${id}`, data).then(r => r.data),
+    getAll: () => api.get<Employee[]>('/employees/').then(r => r.data),
+    getOne: (id: number) => api.get<Employee>(`/employees/${id}/`).then(r => r.data),
+    create: (data: EmployeeCreate) => api.post<Employee>('/employees/', data).then(r => r.data),
+    update: (id: number, data: Partial<EmployeeCreate>) => api.put<Employee>(`/employees/${id}/`, data).then(r => r.data),
     updateCredentials: (id: number, data: { username?: string; password?: string }) =>
-        api.put<Employee>(`/employees/${id}/credentials`, data).then(r => r.data),
-    delete: (id: number) => api.delete(`/employees/${id}`),
+        api.put<Employee>(`/employees/${id}/credentials/`, data).then(r => r.data),
+    delete: (id: number) => api.delete(`/employees/${id}/`),
 }

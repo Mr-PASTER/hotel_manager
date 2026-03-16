@@ -28,15 +28,15 @@ export interface BookingCreate {
 
 export const bookingsApi = {
     getAll: (params?: { room_id?: number; guest_id?: number }) =>
-        api.get<Booking[]>('/bookings', { params }).then(r => r.data),
-    getOne: (id: number) => api.get<Booking>(`/bookings/${id}`).then(r => r.data),
-    create: (data: BookingCreate) => api.post<Booking>('/bookings', data).then(r => r.data),
+        api.get<Booking[]>('/bookings/', { params }).then(r => r.data),
+    getOne: (id: number) => api.get<Booking>(`/bookings/${id}/`).then(r => r.data),
+    create: (data: BookingCreate) => api.post<Booking>('/bookings/', data).then(r => r.data),
     update: (id: number, data: Partial<Omit<Booking, 'id'>>) =>
-        api.put<Booking>(`/bookings/${id}`, data).then(r => r.data),
-    delete: (id: number) => api.delete(`/bookings/${id}`),
+        api.put<Booking>(`/bookings/${id}/`, data).then(r => r.data),
+    delete: (id: number) => api.delete(`/bookings/${id}/`),
 }
 
 export const calendarApi = {
     get: (params?: { start?: string; end?: string; room_id?: number }) =>
-        api.get<BookingWithGuest[]>('/calendar', { params }).then(r => r.data),
+        api.get<BookingWithGuest[]>('/calendar/', { params }).then(r => r.data),
 }

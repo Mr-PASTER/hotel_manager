@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 def get_nc_config():
     db = SessionLocal()
     try:
+        enabled = get_config(db, "nc_enabled")
+        if enabled == "false":
+            return None, None, None, None
         url = get_config(db, "nc_url")
         user = get_config(db, "nc_bot_user")
         password = get_config(db, "nc_bot_password")

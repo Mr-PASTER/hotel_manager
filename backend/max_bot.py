@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 def get_max_config():
     db = SessionLocal()
     try:
+        enabled = get_config(db, "max_enabled")
+        if enabled == "false":
+            return None, None
         token = get_config(db, "max_bot_token")
         chat_id = get_config(db, "max_group_chat_id")
         return token, chat_id
