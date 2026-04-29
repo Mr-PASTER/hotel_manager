@@ -6,7 +6,7 @@ import {
 } from 'antd'
 import {
     PlusOutlined, EditOutlined, DeleteOutlined,
-    SearchOutlined, LockOutlined, KeyOutlined
+    SearchOutlined, KeyOutlined
 } from '@ant-design/icons'
 import { employeesApi, Employee } from '../api/employees'
 
@@ -14,8 +14,7 @@ const { Option } = Select
 
 const roleConfig: Record<string, { label: string; color: string }> = {
     admin: { label: 'Администратор', color: 'var(--primary)' },
-    cleaner: { label: 'Уборщик', color: 'var(--info)' },
-    repair: { label: 'Ремонтник', color: 'var(--warning)' },
+    moderator: { label: 'Модератор', color: 'var(--info)' },
 }
 
 export default function EmployeesPage() {
@@ -99,10 +98,9 @@ export default function EmployeesPage() {
     })
 
     const stats = {
-        admin: employees.filter(e => e.role === 'admin').length,
-        cleaner: employees.filter(e => e.role === 'cleaner').length,
-        repair: employees.filter(e => e.role === 'repair').length,
         total: employees.filter(e => e.active).length,
+        admin: employees.filter(e => e.role === 'admin').length,
+        moderator: employees.filter(e => e.role === 'moderator').length,
     }
 
     const columns = [
@@ -132,7 +130,7 @@ export default function EmployeesPage() {
             title: 'Роль',
             dataIndex: 'role',
             render: (v: string) => {
-                const cfg = roleConfig[v]
+                const cfg = roleConfig[v] || { label: v, color: 'var(--text-muted)' }
                 return <Tag style={{ background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, color: cfg.color }}>{cfg.label}</Tag>
             },
         },
@@ -140,25 +138,6 @@ export default function EmployeesPage() {
             title: 'Телефон',
             dataIndex: 'phone',
             render: (v: string) => <span style={{ color: 'var(--text-secondary)' }}>{v || '—'}</span>,
-        },
-        {
-            title: 'Telegram @username',
-            dataIndex: 'telegram_username',
-            render: (v: string | null) => v ? `@${v}` : <span style={{ color: 'var(--text-muted)' }}>—</span>,
-        },
-        {
-            title: 'NextCloud Username',
-            dataIndex: 'nextcloud_username',
-            render: (v: string | null) => v
-                ? <span style={{ color: 'var(--info)' }}>☁ {v}</span>
-                : <span style={{ color: 'var(--text-muted)' }}>—</span>,
-        },
-        {
-            title: 'MAX Username',
-            dataIndex: 'max_username',
-            render: (v: string | null) => v
-                ? <span style={{ color: 'var(--success)' }}>💬 {v}</span>
-                : <span style={{ color: 'var(--text-muted)' }}>—</span>,
         },
         {
             title: 'Статус',
@@ -221,17 +200,14 @@ export default function EmployeesPage() {
             {/* Stats row */}
             <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
                 {[
-                    { label: 'Всего активных', value: stats.total, color: 'var(--success)' },
-                    { label: 'Администраторы', value: stats.admin, color: 'var(--primary)' },
-                    { label: 'Уборщики', value: stats.cleaner, color: 'var(--info)' },
-                    { label: 'Ремонтники', value: stats.repair, color: 'var(--warning)' },
+                    { label: 'Всего активных', value: stats.total, color: 'var(--success)', icon: '👥' },
+                    { label: 'Администраторы', value: stats.admin, color: 'var(--primary)', icon: '👑' },
+                    { label: 'Модераторы', value: stats.moderator, color: 'var(--info)', icon: '🛡️' },
                 ].map(s => (
-                    <Col key={s.label} xs={12} sm={12} md={6}>
+                    <Col key={s.label} xs={8} sm={8} md={8}>
                         <div className="stat-card" style={{ cursor: 'default' }}>
                             <div className="stat-icon" style={{ background: `${s.color}18` }}>
-                                <span style={{ fontSize: 16, color: s.color }}>
-                                    {s.label.includes('Всего') ? '👥' : s.label.includes('Адм') ? '👑' : s.label.includes('Уб') ? '🧹' : '🔧'}
-                                </span>
+                                <span style={{ fontSize: 16, color: s.color }}>{s.icon}</span>
                             </div>
                             <div className="stat-value">{s.value}</div>
                             <div className="stat-label" style={{ color: s.color }}>{s.label}</div>
@@ -279,7 +255,7 @@ export default function EmployeesPage() {
                 open={modalOpen}
                 onCancel={() => { setModalOpen(false); setEditEmp(null); form.resetFields() }}
                 footer={null}
-                width={480}
+                width={520}
             >
                 <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
                     <Form.Item name="full_name" label="ФИО" rules={[{ required: true }]}>
@@ -317,7 +293,6 @@ export default function EmployeesPage() {
                                 style={{ marginBottom: 16, borderColor: 'var(--primary)', color: 'var(--primary)' }}
                                 onClick={() => {
                                     const fullName = form.getFieldValue('full_name') || ''
-                                    // Транслитерация кириллицы
                                     const translitMap: Record<string, string> = {
                                         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
                                         'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
@@ -336,7 +311,7 @@ export default function EmployeesPage() {
                                     for (let i = 0; i < 8; i++) pass += chars[Math.floor(Math.random() * chars.length)]
                                     form.setFieldsValue({ username: login, password: pass })
                                     navigator.clipboard.writeText(`Логин: ${login}\nПароль: ${pass}`)
-                                        .then(() => message.success('Логин и пароль сгенерированы и скопированы в буфер обмена!'))
+                                        .then(() => message.success('Логин и пароль сгенерированы и скопированы!'))
                                         .catch(() => message.success('Логин и пароль сгенерированы!'))
                                 }}
                             >
@@ -355,16 +330,14 @@ export default function EmployeesPage() {
                         <Switch checkedChildren="Активен" unCheckedChildren="Неактивен" />
                     </Form.Item>
 
-                    {(editEmp ? form.getFieldValue('role') === 'admin' : false) && (
-                        <Form.Item name="notification_preference" label="Уведомления" initialValue="all">
-                            <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
-                                <Radio.Button value="telegram" style={{ width: '25%', textAlign: 'center' }}>Telegram</Radio.Button>
-                                <Radio.Button value="nextcloud" style={{ width: '25%', textAlign: 'center' }}>NC</Radio.Button>
-                                <Radio.Button value="max" style={{ width: '25%', textAlign: 'center' }}>MAX</Radio.Button>
-                                <Radio.Button value="all" style={{ width: '25%', textAlign: 'center' }}>Все</Radio.Button>
-                            </Radio.Group>
-                        </Form.Item>
-                    )}
+                    <Form.Item name="notification_preference" label="Уведомления" initialValue="all">
+                        <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
+                            <Radio.Button value="telegram" style={{ width: '25%', textAlign: 'center' }}>Telegram</Radio.Button>
+                            <Radio.Button value="nextcloud" style={{ width: '25%', textAlign: 'center' }}>NC</Radio.Button>
+                            <Radio.Button value="max" style={{ width: '25%', textAlign: 'center' }}>MAX</Radio.Button>
+                            <Radio.Button value="all" style={{ width: '25%', textAlign: 'center' }}>Все</Radio.Button>
+                        </Radio.Group>
+                    </Form.Item>
 
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <Button onClick={() => { setModalOpen(false); setEditEmp(null); form.resetFields() }}>Отмена</Button>
@@ -393,7 +366,7 @@ export default function EmployeesPage() {
                 </div>
                 <Form form={credForm} layout="vertical" onFinish={handleCredSave}>
                     <Form.Item name="username" label="Новый логин">
-                        <Input prefix={<LockOutlined />} placeholder="Оставьте пустым — без изменений" />
+                        <Input placeholder="Оставьте пустым — без изменений" />
                     </Form.Item>
                     <Form.Item name="password" label="Новый пароль">
                         <Input.Password placeholder="Оставьте пустым — без изменений" />

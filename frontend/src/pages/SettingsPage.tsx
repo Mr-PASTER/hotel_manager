@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Form, Input, Button, message, Spin, Row, Col, Typography, Divider, Checkbox } from 'antd'
-import { SaveOutlined, SettingOutlined, CloudServerOutlined, MessageOutlined, BellOutlined, EditOutlined } from '@ant-design/icons'
+import { SaveOutlined, CloudServerOutlined, BellOutlined, FileTextOutlined } from '@ant-design/icons'
 import api from '../api/client'
 
 const { Title, Text } = Typography
 
-interface AppConfig {
-    key: string
-    value: string
-}
+interface AppConfig { key: string; value: string }
+
+const DEFAULT_TEMPLATE =
+    `🏨 Статус уборки номеров
+
+✅ Чистые ({clean_count}):
+{clean_rooms}
+
+🧹 Требуют уборки ({dirty_count}):
+{dirty_rooms}`
 
 export default function SettingsPage() {
     const [form] = Form.useForm()
@@ -18,32 +24,21 @@ export default function SettingsPage() {
         setLoading(true)
         try {
             const { data } = await api.get<AppConfig[]>('/settings')
-            const initialValues: Record<string, any> = {}
+            const values: Record<string, any> = {}
             data.forEach(cfg => {
-                if (['tg_enabled', 'nc_enabled', 'max_enabled', 'notify_assignment_created', 'notify_assignment_completed', 'notify_room_changes', 'notify_employee_changes', 'notify_reminders'].includes(cfg.key)) {
-                    initialValues[cfg.key] = cfg.value !== 'false' // default to true if missing or non-false
+                const boolKeys = ['nc_enabled', 'notify_room_changes', 'notify_employee_changes']
+                if (boolKeys.includes(cfg.key)) {
+                    values[cfg.key] = cfg.value !== 'false'
                 } else {
-                    initialValues[cfg.key] = cfg.value
+                    values[cfg.key] = cfg.value
                 }
             })
-            
-            // Default templates if not set
-            const templates = [
-                'template_assignment_group',
-                'template_assignment_personal',
-                'template_assignment_completed',
-                'template_reminder'
-            ]
-            templates.forEach(t => {
-                if (!initialValues[t]) {
-                    if (t === 'template_assignment_group') initialValues[t] = "🏨 Новое назначение для {name}:\nНомер #{number}, тип: {type}\n📅 Дата: {date}"
-                    if (t === 'template_assignment_personal') initialValues[t] = "Вам назначена новая задача!\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
-                    if (t === 'template_assignment_completed') initialValues[t] = "✅ Задание завершено!\nСотрудник: {name}\nНомер: #{number}\nЗавершено: {date}"
-                    if (t === 'template_reminder') initialValues[t] = "⏰ Напоминание! Сегодня ваш день выхода:\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
-                }
-            })
-            form.setFieldsValue(initialValues)
-        } catch (e) {
+            // Дефолтный шаблон, если не задан
+            if (!values['template_room_status']) {
+                values['template_room_status'] = DEFAULT_TEMPLATE
+            }
+            form.setFieldsValue(values)
+        } catch {
             message.error('Ошибка загрузки настроек')
         } finally {
             setLoading(false)
@@ -57,8 +52,8 @@ export default function SettingsPage() {
             await api.put('/settings', values)
             message.success('Настройки успешно сохранены')
             load()
-        } catch (e) {
-            message.error('Ошибка сохранения настроек')
+        } catch {
+            message.error('Ошибка сохранения')
         }
     }
 
@@ -78,92 +73,37 @@ export default function SettingsPage() {
             <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
                 <Form form={form} layout="vertical" onFinish={handleSave}>
 
-                    {/* ── Telegram ─────────────────────────────── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <SettingOutlined style={{ fontSize: 20, color: '#1a1000' }} />
-                        </div>
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>Telegram интеграция</Title>
-                            <Text style={{ color: 'var(--text-muted)' }}>Настройка бота и общей группы для уведомлений</Text>
-                        </div>
-                    </div>
-
-                    <Divider style={{ borderColor: 'var(--border)' }} />
-
-                    <Row gutter={24}>
-                        <Col span={24} style={{ marginBottom: 16 }}>
-                            <Form.Item name="tg_enabled" valuePropName="checked" style={{ margin: 0 }}>
-                                <Checkbox><Text strong>Включить отправку уведомлений в Telegram</Text></Checkbox>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={24}>
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="tg_bot_token"
-                                label="Bot Token (Токен бота)"
-                                extra="Выдается в BotFather при создании"
-                            >
-                                <Input.Password placeholder="123456789:ABCDefgh..." autoComplete="off" />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="tg_group_chat_id"
-                                label="Group Chat ID"
-                                extra="ID группы, куда бот добавлен админом (напр. -100...)"
-                            >
-                                <Input placeholder="-1001234567890" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    {/* ── NextCloud Talk ───────────────────────── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--info)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <CloudServerOutlined style={{ fontSize: 20, color: '#fff' }} />
-                        </div>
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>NextCloud Talk интеграция</Title>
-                            <Text style={{ color: 'var(--text-muted)' }}>Настройка бота NextCloud Talk для уведомлений</Text>
-                        </div>
-                    </div>
-
+                    {/* ── NextCloud Talk ────────────────────────── */}
+                    <SectionHeader
+                        icon={<CloudServerOutlined style={{ fontSize: 20, color: '#fff' }} />}
+                        iconBg="var(--info)"
+                        title="NextCloud Talk"
+                        subtitle="Интеграция с NextCloud Talk для отправки отчётов"
+                    />
                     <Divider style={{ borderColor: 'var(--border)' }} />
 
                     <Row gutter={24}>
                         <Col span={24} style={{ marginBottom: 16 }}>
                             <Form.Item name="nc_enabled" valuePropName="checked" style={{ margin: 0 }}>
-                                <Checkbox><Text strong>Включить отправку уведомлений в NextCloud Talk</Text></Checkbox>
+                                <Checkbox>
+                                    <Text strong>Включить отправку уведомлений в NextCloud Talk</Text>
+                                </Checkbox>
                             </Form.Item>
                         </Col>
                     </Row>
                     <Row gutter={24}>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="nc_url"
-                                label="URL сервера NextCloud"
-                                extra="Например: https://cloud.example.com"
-                            >
+                            <Form.Item name="nc_url" label="URL сервера NextCloud" extra="Например: https://cloud.example.com">
                                 <Input placeholder="https://cloud.example.com" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="nc_bot_user"
-                                label="Логин бота (пользователь NC)"
-                                extra="Имя пользователя в NextCloud"
-                            >
+                            <Form.Item name="nc_bot_user" label="Логин бота (пользователь NC)">
                                 <Input placeholder="hotel_bot" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="nc_bot_password"
-                                label="Пароль бота"
-                                extra="Пароль аккаунта или App Password"
-                            >
+                            <Form.Item name="nc_bot_password" label="Пароль бота">
                                 <Input.Password placeholder="••••••••" autoComplete="off" />
                             </Form.Item>
                         </Col>
@@ -171,155 +111,136 @@ export default function SettingsPage() {
                             <Form.Item
                                 name="nc_room_token"
                                 label="Token общей комнаты"
-                                extra="Токен комнаты для системных логов (из URL чата)"
+                                extra="Берётся из URL чата: /call/TOKEN"
                             >
                                 <Input placeholder="abc123def456" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    {/* ── MAX ────────────────────────────────────── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--success)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <MessageOutlined style={{ fontSize: 20, color: '#fff' }} />
-                        </div>
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>MAX интеграция</Title>
-                            <Text style={{ color: 'var(--text-muted)' }}>Новый русский мессенджер</Text>
-                        </div>
-                    </div>
-
+                    {/* ── События уведомлений ──────────────────── */}
+                    <SectionHeader
+                        icon={<BellOutlined style={{ fontSize: 20, color: '#fff' }} />}
+                        iconBg="var(--warning)"
+                        title="Автоматические уведомления"
+                        subtitle="Когда отправлять автоматические сообщения в чат"
+                    />
                     <Divider style={{ borderColor: 'var(--border)' }} />
 
                     <Row gutter={24}>
-                        <Col span={24} style={{ marginBottom: 16 }}>
-                            <Form.Item name="max_enabled" valuePropName="checked" style={{ margin: 0 }}>
-                                <Checkbox><Text strong>Включить отправку уведомлений в MAX</Text></Checkbox>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={24}>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="max_bot_token"
-                                label="Bot Token (Токен бота MAX)"
-                                extra="Токен бота для доступа к API MAX"
-                            >
-                                <Input.Password placeholder="Введите токен..." autoComplete="off" />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="max_group_chat_id"
-                                label="MAX Group Chat ID"
-                                extra="ID группы, куда отправлять общие логи"
-                            >
-                                <Input placeholder="chat123abc" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    {/* ── События уведомлений (Триггеры) ───────────── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--warning)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <BellOutlined style={{ fontSize: 20, color: '#fff' }} />
-                        </div>
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>События уведомлений</Title>
-                            <Text style={{ color: 'var(--text-muted)' }}>Выберите, о каких событиях отправлять уведомления</Text>
-                        </div>
-                    </div>
-
-                    <Divider style={{ borderColor: 'var(--border)' }} />
-
-                    <Row gutter={24}>
-                        <Col xs={12} sm={8}>
-                            <Form.Item name="notify_assignment_created" valuePropName="checked">
-                                <Checkbox>Новые назначения</Checkbox>
-                            </Form.Item>
-                        </Col>
-                        <Col xs={12} sm={8}>
-                            <Form.Item name="notify_assignment_completed" valuePropName="checked">
-                                <Checkbox>Завершения назначений</Checkbox>
-                            </Form.Item>
-                        </Col>
-                        <Col xs={12} sm={8}>
                             <Form.Item name="notify_room_changes" valuePropName="checked">
                                 <Checkbox>Изменение статуса номеров</Checkbox>
                             </Form.Item>
                         </Col>
-                        <Col xs={12} sm={8}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="notify_employee_changes" valuePropName="checked">
-                                <Checkbox>Изменения сотрудников</Checkbox>
-                            </Form.Item>
-                        </Col>
-                        <Col xs={12} sm={8}>
-                            <Form.Item name="notify_reminders" valuePropName="checked">
-                                <Checkbox>Ежедневные напоминания</Checkbox>
+                                <Checkbox>Изменения в сотрудниках</Checkbox>
                             </Form.Item>
                         </Col>
                     </Row>
-                    
-                    {/* ── Шаблоны сообщений ──────────────────────── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <EditOutlined style={{ fontSize: 20, color: '#1a1000' }} />
+
+                    {/* ── Шаблон отчёта ───────────────────────── */}
+                    <SectionHeader
+                        icon={<FileTextOutlined style={{ fontSize: 20, color: '#1a1000' }} />}
+                        iconBg="var(--primary)"
+                        title="Шаблон отчёта о чистоте"
+                        subtitle='Текст, отправляемый кнопкой "Отправить в чат" на панели уборки'
+                    />
+                    <Divider style={{ borderColor: 'var(--border)' }} />
+
+                    {/* Подсказка по переменным */}
+                    <div style={{
+                        background: 'rgba(201,168,76,0.08)',
+                        border: '1px solid rgba(201,168,76,0.25)',
+                        borderRadius: 8,
+                        padding: '12px 16px',
+                        marginBottom: 16,
+                        fontSize: 13,
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.7,
+                    }}>
+                        <div style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: 6 }}>
+                            📋 Доступные переменные:
                         </div>
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>Шаблоны сообщений</Title>
-                            <Text style={{ color: 'var(--text-muted)' }}>Настройте текст уведомлений (используйте {`{name}, {number}, {type}, {date}, {note}`})</Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 24px' }}>
+                            {[
+                                ['{clean_rooms}',  'Список чистых номеров'],
+                                ['{dirty_rooms}',  'Список грязных номеров'],
+                                ['{clean_count}',  'Кол-во чистых'],
+                                ['{dirty_count}',  'Кол-во грязных'],
+                                ['{total}',        'Всего номеров'],
+                            ].map(([v, d]) => (
+                                <div key={v}>
+                                    <code style={{
+                                        color: 'var(--primary)',
+                                        background: 'rgba(201,168,76,0.12)',
+                                        padding: '1px 5px',
+                                        borderRadius: 4,
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                    }}>{v}</code>
+                                    {' — '}{d}
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <Divider style={{ borderColor: 'var(--border)' }} />
+                    <Form.Item name="template_room_status" label="Шаблон сообщения">
+                        <Input.TextArea
+                            rows={8}
+                            placeholder={DEFAULT_TEMPLATE}
+                            style={{ fontFamily: 'monospace', fontSize: 13 }}
+                        />
+                    </Form.Item>
 
-                    <Row gutter={24}>
-                        <Col span={24}>
-                            <Form.Item 
-                                name="template_assignment_group" 
-                                label="Новое назначение (в группу)"
-                                extra="Переменные: {name}, {number}, {type}, {date}"
-                            >
-                                <Input.TextArea rows={3} placeholder="🏨 Новое назначение для {name}..." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                            <Form.Item 
-                                name="template_assignment_personal" 
-                                label="Новое назначение (личное)"
-                                extra="Переменные: {number}, {type}, {date}"
-                            >
-                                <Input.TextArea rows={3} placeholder="Вам назначена новая задача!.." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                            <Form.Item 
-                                name="template_assignment_completed" 
-                                label="Завершение задания (в логи)"
-                                extra="Переменные: {name}, {number}, {date}"
-                            >
-                                <Input.TextArea rows={3} placeholder="✅ Задание завершено!.." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                            <Form.Item 
-                                name="template_reminder" 
-                                label="Ежедневное напоминание"
-                                extra="Переменные: {number}, {type}, {date}"
-                            >
-                                <Input.TextArea rows={3} placeholder="⏰ Напоминание!.." />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Button
+                        type="text"
+                        size="small"
+                        style={{ color: 'var(--text-muted)', marginTop: -8, marginBottom: 16 }}
+                        onClick={() => form.setFieldsValue({ template_room_status: DEFAULT_TEMPLATE })}
+                    >
+                        Сбросить к дефолтному
+                    </Button>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" style={{ borderRadius: 8 }}>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            icon={<SaveOutlined />}
+                            size="large"
+                            style={{ borderRadius: 8 }}
+                        >
                             Сохранить настройки
                         </Button>
                     </div>
 
                 </Form>
             </Card>
+        </div>
+    )
+}
+
+function SectionHeader({
+    icon, iconBg, title, subtitle,
+}: {
+    icon: React.ReactNode
+    iconBg: string
+    title: string
+    subtitle: string
+}) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, marginTop: 20 }}>
+            <div style={{
+                width: 40, height: 40, background: iconBg, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+                {icon}
+            </div>
+            <div>
+                <Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>{title}</Title>
+                <Text style={{ color: 'var(--text-muted)', fontSize: 13 }}>{subtitle}</Text>
+            </div>
         </div>
     )
 }

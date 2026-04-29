@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
 import models
 import schemas
 from database import get_db
 from dependencies import get_admin_user
-from routers.auth import get_password_hash
-from telegram_bot import send_admin_log
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from nextcloud_bot import send_nc_admin_log
-from max_bot import send_max_admin_log
+from sqlalchemy.orm import Session
 from utils import get_config
+from routers.auth import get_password_hash
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
@@ -41,6 +39,7 @@ def create_employee(
         )
         if existing:
             raise HTTPException(status_code=400, detail="Логин уже занят")
+
     emp = models.Employee(
         full_name=data.full_name,
         role=data.role,
@@ -58,9 +57,7 @@ def create_employee(
 
     if get_config(db, "notify_employee_changes") != "false":
         msg = f"👤 Добавлен новый сотрудник: {emp.full_name} ({emp.role.value})"
-        background_tasks.add_task(send_admin_log, msg)
         background_tasks.add_task(send_nc_admin_log, msg)
-        background_tasks.add_task(send_max_admin_log, msg)
 
     return emp
 
@@ -80,13 +77,11 @@ def update_employee(
         setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
-    
+
     if get_config(db, "notify_employee_changes") != "false":
         msg = f"👤 Изменён сотрудник: {emp.full_name} ({emp.role.value})"
-        background_tasks.add_task(send_admin_log, msg)
         background_tasks.add_task(send_nc_admin_log, msg)
-        background_tasks.add_task(send_max_admin_log, msg)
-        
+
     return emp
 
 
@@ -104,7 +99,8 @@ def update_credentials(
         conflict = (
             db.query(models.Employee)
             .filter(
-                models.Employee.username == data.username, models.Employee.id != emp_id
+                models.Employee.username == data.username,
+                models.Employee.id != emp_id,
             )
             .first()
         )

@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date, datetime
+from datetime import date
 from models import (
     RoomType,
     RoomStatus,
+    RoomCleanStatus,
     EmployeeRole,
     BookingStatus,
-    AssignmentType,
     NotificationPreference,
 )
 
@@ -32,6 +32,7 @@ class RoomBase(BaseModel):
     floor: int
     type: RoomType = RoomType.single
     status: RoomStatus = RoomStatus.free
+    clean_status: RoomCleanStatus = RoomCleanStatus.clean
     description: str = ""
 
 
@@ -44,6 +45,7 @@ class RoomUpdate(BaseModel):
     floor: Optional[int] = None
     type: Optional[RoomType] = None
     status: Optional[RoomStatus] = None
+    clean_status: Optional[RoomCleanStatus] = None
     description: Optional[str] = None
 
 
@@ -156,27 +158,6 @@ class BookingWithGuest(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ─── Assignment ───────────────────────────────────────────────────────────────
-class AssignmentBase(BaseModel):
-    room_id: int
-    employee_id: int
-    date: date
-    type: AssignmentType
-    note: str = ""
-
-
-class AssignmentCreate(AssignmentBase):
-    pass
-
-
-class AssignmentOut(AssignmentBase):
-    id: int
-    employee_full_name: Optional[str] = None
-    completed: bool = False
-    completed_at: Optional[datetime] = None
-    model_config = {"from_attributes": True}
-
-
 # ─── AppConfig ────────────────────────────────────────────────────────────────
 class AppConfigOut(BaseModel):
     key: str
@@ -185,23 +166,14 @@ class AppConfigOut(BaseModel):
 
 
 class AppConfigUpdate(BaseModel):
-    tg_enabled: Optional[bool] = None
-    tg_bot_token: Optional[str] = None
-    tg_group_chat_id: Optional[str] = None
+    # NextCloud Talk
     nc_enabled: Optional[bool] = None
     nc_url: Optional[str] = None
     nc_bot_user: Optional[str] = None
     nc_bot_password: Optional[str] = None
     nc_room_token: Optional[str] = None
-    max_enabled: Optional[bool] = None
-    max_bot_token: Optional[str] = None
-    max_group_chat_id: Optional[str] = None
-    notify_assignment_created: Optional[bool] = None
-    notify_assignment_completed: Optional[bool] = None
+    # События
     notify_room_changes: Optional[bool] = None
     notify_employee_changes: Optional[bool] = None
-    notify_reminders: Optional[bool] = None
-    template_assignment_group: Optional[str] = None
-    template_assignment_personal: Optional[str] = None
-    template_assignment_completed: Optional[str] = None
-    template_reminder: Optional[str] = None
+    # Шаблон отчёта о чистоте номеров
+    template_room_status: Optional[str] = None

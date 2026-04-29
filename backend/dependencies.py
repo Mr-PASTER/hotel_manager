@@ -68,3 +68,13 @@ def get_admin_user(user: models.Employee = Depends(get_current_user)):
             detail="Только для администраторов",
         )
     return user
+
+
+def get_admin_or_moderator(user: models.Employee = Depends(get_current_user)):
+    """Зависимость для администраторов и модераторов."""
+    if user.role not in (models.EmployeeRole.admin, models.EmployeeRole.moderator):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ запрещён",
+        )
+    return user

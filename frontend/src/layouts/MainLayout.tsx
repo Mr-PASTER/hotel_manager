@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
     HomeOutlined,
@@ -11,6 +11,7 @@ import {
     MenuUnfoldOutlined,
     BankOutlined,
     SettingOutlined,
+    CheckSquareOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -18,8 +19,7 @@ const { Sider, Content, Header } = Layout
 
 const roleLabels: Record<string, string> = {
     admin: 'Администратор',
-    cleaner: 'Уборщик',
-    repair: 'Ремонтник',
+    moderator: 'Модератор',
 }
 
 export default function MainLayout() {
@@ -39,6 +39,20 @@ export default function MainLayout() {
             },
         ],
     }
+
+    // Пункты меню, доступные всем авторизованным
+    const commonItems = [
+        { key: '/', icon: <HomeOutlined />, label: 'Номера' },
+        { key: '/room-status', icon: <CheckSquareOutlined />, label: 'Статус уборки' },
+    ]
+
+    // Пункты только для администраторов
+    const adminItems = user?.role === 'admin' ? [
+        { key: '/employees', icon: <TeamOutlined />, label: 'Сотрудники' },
+        { key: '/guests', icon: <UserOutlined />, label: 'Гости' },
+        { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
+        { key: '/settings', icon: <SettingOutlined />, label: 'Настройки' },
+    ] : []
 
     return (
         <Layout style={{ minHeight: '100dvh' }}>
@@ -96,17 +110,7 @@ export default function MainLayout() {
                             setCollapsed(true)
                         }
                     }}
-                    items={[
-                        // Номера доступны всем
-                        { key: '/', icon: <HomeOutlined />, label: 'Номера' },
-                        // Остальные пункты — только для админов
-                        ...(user?.role === 'admin' ? [
-                            { key: '/employees', icon: <TeamOutlined />, label: 'Сотрудники' },
-                            { key: '/guests', icon: <UserOutlined />, label: 'Гости' },
-                            { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
-                            { key: '/settings', icon: <SettingOutlined />, label: 'Настройки' },
-                        ] : []),
-                    ]}
+                    items={[...commonItems, ...adminItems]}
                     style={{
                         marginTop: 8,
                         border: 'none',

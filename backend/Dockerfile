@@ -2,15 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Создаем директорию для БД, чтобы SQLite не вылетал с ошибкой
+# Директория для SQLite БД (монтируется как volume)
 RUN mkdir -p /app/data
 
-# Устанавливаем зависимости
+# Зависимости
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем исходный код бэкенда
+# Исходный код
 COPY . .
 
-# При запуске контейнера применяем миграции (если есть) и запускаем сервер
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
+# Запуск: сначала миграция, потом сервер
+CMD ["sh", "-c", "python migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

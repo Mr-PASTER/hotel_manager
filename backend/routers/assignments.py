@@ -1,14 +1,15 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
 from typing import Optional
+
 import models
 import schemas
-from telegram_bot import send_admin_log, send_personal_message
-from nextcloud_bot import send_nc_admin_log, send_nc_notification
-from max_bot import send_max_admin_log, send_max_personal_message
 from database import get_db
 from dependencies import get_current_user
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from max_bot import send_max_admin_log, send_max_personal_message
+from nextcloud_bot import send_nc_admin_log, send_nc_notification
+from sqlalchemy.orm import Session
+from telegram_bot import send_admin_log, send_personal_message
 from utils import get_config
 
 router = APIRouter(prefix="/api/assignments", tags=["assignments"])
@@ -69,22 +70,24 @@ def create_assignment(
     db.commit()
     db.refresh(assignment)
 
-    type_label = "Уборка" if data.type == "cleaning" else "Ремонт"
-    
+    # Generalized assignment type label, displaying the specific task type provided by the user
+    type_label = f"{data.type.capitalize()} задача"
+
     # Load templates from DB
-    tpl_group = get_config(db, "template_assignment_group") or "🏨 Новое назначение для {name}:\nНомер #{number}, тип: {type}\n📅 Дата: {date}"
-    tpl_personal = get_config(db, "template_assignment_personal") or "Вам назначена новая задача!\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
+    tpl_group = (
+        get_config(db, "template_assignment_group")
+        or "🏨 Новое назначение для {name}:\nНомер #{number}, тип: {type}\n📅 Дата: {date}"
+    )
+    tpl_personal = (
+        get_config(db, "template_assignment_personal")
+        or "Вам назначена новая задача!\n\n🛏 Номер: #{number}\n🛠 Тип: {type}\n📅 Дата: {date}"
+    )
 
     group_msg = tpl_group.format(
-        name=emp.full_name,
-        number=room.number,
-        type=type_label,
-        date=data.date
+        name=emp.full_name, number=room.number, type=type_label, date=data.date
     )
     personal_msg = tpl_personal.format(
-        number=room.number,
-        type=type_label,
-        date=data.date
+        number=room.number, type=type_label, date=data.date
     )
 
     # 1) Уведомление в группу (TG + NC + MAX)
@@ -205,12 +208,16 @@ def complete_assignment(
 
     if notify:
         emp = a.employee
-        tpl_completed = get_config(db, "template_assignment_completed") or "✅ Задание завершено!\nСотрудник: {name}\nНомер: #{number}\nЗавершено: {date}"
-        
+        # The completion message template is already general enough for task type changes.
+        tpl_completed = (
+            get_config(db, "template_assignment_completed")
+            or "✅ Задание завершено!\nСотрудник: {name}\nНомер: #{number}\nЗавершено: {date}"
+        )
+
         log_msg = tpl_completed.format(
-            name=emp.full_name if emp else 'N/A',
+            name=emp.full_name if emp else "N/A",
             number=room.number if room else a.room_id,
-            date=a.completed_at.strftime('%d.%m.%Y %H:%M')
+            date=a.completed_at.strftime("%d.%m.%Y %H:%M"),
         )
         background_tasks.add_task(send_admin_log, log_msg)
         background_tasks.add_task(send_nc_admin_log, log_msg)

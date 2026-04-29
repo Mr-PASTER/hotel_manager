@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from typing import Optional
 import models
 import schemas
 from database import get_db
-from dependencies import get_admin_user
+from dependencies import get_admin_user, get_current_user
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 

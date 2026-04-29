@@ -1,16 +1,17 @@
+import enum
+
+from database import Base
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
     Boolean,
+    Column,
     Date,
     DateTime,
-    ForeignKey,
     Enum,
+    ForeignKey,
+    Integer,
+    String,
 )
 from sqlalchemy.orm import relationship
-import enum
-from database import Base
 
 
 class RoomType(str, enum.Enum):
@@ -23,25 +24,22 @@ class RoomStatus(str, enum.Enum):
     free = "free"
     occupied = "occupied"
     booked = "booked"
-    cleaning = "cleaning"
-    repair = "repair"
+
+
+class RoomCleanStatus(str, enum.Enum):
+    clean = "clean"
+    dirty = "dirty"
 
 
 class EmployeeRole(str, enum.Enum):
-    cleaner = "cleaner"
-    repair = "repair"
     admin = "admin"
+    moderator = "moderator"
 
 
 class BookingStatus(str, enum.Enum):
     active = "active"
     completed = "completed"
     cancelled = "cancelled"
-
-
-class AssignmentType(str, enum.Enum):
-    cleaning = "cleaning"
-    repair = "repair"
 
 
 class NotificationPreference(str, enum.Enum):
@@ -59,13 +57,11 @@ class Room(Base):
     floor = Column(Integer, nullable=False)
     type = Column(Enum(RoomType), default=RoomType.single)
     status = Column(Enum(RoomStatus), default=RoomStatus.free)
+    clean_status = Column(Enum(RoomCleanStatus), default=RoomCleanStatus.clean)
     description = Column(String, default="")
 
     bookings = relationship(
         "Booking", back_populates="room", cascade="all, delete-orphan"
-    )
-    assignments = relationship(
-        "RoomAssignment", back_populates="room", cascade="all, delete-orphan"
     )
 
 
@@ -84,10 +80,6 @@ class Employee(Base):
     max_username = Column(String, nullable=True)
     notification_preference = Column(
         Enum(NotificationPreference), default=NotificationPreference.all
-    )
-
-    assignments = relationship(
-        "RoomAssignment", back_populates="employee", cascade="all, delete-orphan"
     )
 
 
@@ -117,22 +109,6 @@ class Booking(Base):
 
     room = relationship("Room", back_populates="bookings")
     guest = relationship("Guest", back_populates="bookings")
-
-
-class RoomAssignment(Base):
-    __tablename__ = "room_assignments"
-
-    id = Column(Integer, primary_key=True, index=True)
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
-    date = Column(Date, nullable=False)
-    type = Column(Enum(AssignmentType), nullable=False)
-    note = Column(String, default="")
-    completed = Column(Boolean, default=False)
-    completed_at = Column(DateTime, nullable=True)
-
-    room = relationship("Room", back_populates="assignments")
-    employee = relationship("Employee", back_populates="assignments")
 
 
 class AppConfig(Base):

@@ -7,14 +7,20 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
-    # Порт 8000 пробрасываем наружу, если хотим ходить в API напрямую
-    # Но для Nginx он доступен внутри сети hotel_net
-    ports:
-      - "8000:8000"
+    # Порт 8000 НЕ пробрасываем наружу — доступен только внутри hotel_net через nginx
+    # Раскомментируйте для прямого доступа к API при отладке:
+    # ports:
+    #   - "8000:8000"
     volumes:
       - hotel_data:/app/data
     networks:
       - hotel_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
@@ -23,7 +29,8 @@ services:
     container_name: hotel_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "80:80"
     networks:

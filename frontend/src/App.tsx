@@ -9,6 +9,7 @@ import EmployeesPage from './pages/EmployeesPage'
 import GuestsPage from './pages/GuestsPage'
 import CalendarPage from './pages/CalendarPage'
 import SettingsPage from './pages/SettingsPage'
+import RoomStatusPage from './pages/RoomStatusPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, loading } = useAuth()
@@ -52,6 +53,9 @@ function AppRoutes() {
                 }
             >
                 <Route path="/" element={<RoomsPage />} />
+                {/* Панель статусов уборки — доступна всем авторизованным */}
+                <Route path="/room-status" element={<RoomStatusPage />} />
+                {/* Только для администраторов */}
                 <Route path="/employees" element={<AdminRoute><EmployeesPage /></AdminRoute>} />
                 <Route path="/guests" element={<AdminRoute><GuestsPage /></AdminRoute>} />
                 <Route path="/calendar" element={<AdminRoute><CalendarPage /></AdminRoute>} />

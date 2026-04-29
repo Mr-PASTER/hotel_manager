@@ -3,19 +3,19 @@ import api from './client'
 export interface Employee {
     id: number
     full_name: string
-    role: 'cleaner' | 'repair' | 'admin'
+    role: 'admin' | 'moderator'
     phone: string
     active: boolean
     username: string | null
     telegram_username: string | null
     nextcloud_username: string | null
     max_username: string | null
-    notification_preference: 'telegram' | 'nextcloud' | 'max' | 'all'
+    notification_preference: string
 }
 
 export interface EmployeeCreate {
     full_name: string
-    role: 'cleaner' | 'repair' | 'admin'
+    role: 'admin' | 'moderator'
     phone?: string
     active?: boolean
     username?: string
@@ -23,7 +23,7 @@ export interface EmployeeCreate {
     telegram_username?: string
     nextcloud_username?: string
     max_username?: string
-    notification_preference?: 'telegram' | 'nextcloud' | 'max' | 'all'
+    notification_preference?: string
 }
 
 export const employeesApi = {
