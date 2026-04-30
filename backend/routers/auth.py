@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import hashlib
 from typing import Optional
@@ -30,7 +30,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
@@ -79,12 +79,16 @@ def login(
         data={"sub": employee.username, "role": employee.role.value, "id": employee.id}
     )
 
+    # На HTTPS (продакшн) нужны secure=True + samesite="none"
+    # чтобы cookie передавался через Nginx reverse proxy
+    is_https = os.environ.get("HTTPS_ENABLED", "true").lower() == "true"
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=86400,  # 24 hours
-        samesite="lax",
+        samesite="none" if is_https else "lax",
+        secure=is_https,
         path="/",
     )
 

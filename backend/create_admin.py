@@ -1,10 +1,14 @@
 """
 Скрипт для создания первого администратора.
-Запустить один раз из папки backend/:
 
-python create_admin.py
+Запустить интерактивно:
+    docker compose exec backend python create_admin.py
+
+Или через переменные окружения (без TTY):
+    docker compose exec -e ADMIN_NAME="Иванов Иван" -e ADMIN_USER=admin -e ADMIN_PASS=secret backend python create_admin.py
 """
 
+import os
 import sys
 import hashlib
 import bcrypt
@@ -48,13 +52,22 @@ def create_admin(full_name: str, username: str, password: str):
 
 
 if __name__ == "__main__":
-    print("=== Создание администратора Hotel Manager ===")
-    name = input("ФИО администратора (например: Петров Пётр Петрович): ").strip()
-    login = input("Логин: ").strip()
-    passwd = input("Пароль: ").strip()
+    # Поддержка переменных окружения для автоматического режима
+    env_name = os.environ.get("ADMIN_NAME", "").strip()
+    env_user = os.environ.get("ADMIN_USER", "").strip()
+    env_pass = os.environ.get("ADMIN_PASS", "").strip()
 
-    if not name or not login or not passwd:
-        print("❌ Все поля обязательны.")
-        sys.exit(1)
+    if env_name and env_user and env_pass:
+        print("=== Создание администратора (из переменных окружения) ===")
+        create_admin(env_name, env_user, env_pass)
+    else:
+        print("=== Создание администратора Hotel Manager ===")
+        name = input("ФИО администратора (например: Петров Пётр Петрович): ").strip()
+        login = input("Логин: ").strip()
+        passwd = input("Пароль: ").strip()
 
-    create_admin(name, login, passwd)
+        if not name or not login or not passwd:
+            print("❌ Все поля обязательны.")
+            sys.exit(1)
+
+        create_admin(name, login, passwd)

@@ -40,6 +40,8 @@ _allowed_origins = [
     "http://localhost:80",
     "http://localhost",
     "http://193.169.11.185",
+    "https://hotel.mpda.ru",
+    "http://hotel.mpda.ru",
 ]
 if FRONTEND_URL:
     _allowed_origins.append(FRONTEND_URL)

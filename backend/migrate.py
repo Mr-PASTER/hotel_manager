@@ -14,6 +14,15 @@ def get_db_path() -> str:
     return "hotel.db"
 
 
+def table_exists(cursor, table_name: str) -> bool:
+    """Проверяет существование таблицы в SQLite."""
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+        (table_name,)
+    )
+    return cursor.fetchone() is not None
+
+
 def run_migration():
     db_path = get_db_path()
     print(f"Starting database migration on: {db_path}")
@@ -22,47 +31,56 @@ def run_migration():
 
     try:
         # ── bookings ────────────────────────────────────────────────────────
-        cursor.execute("PRAGMA table_info(bookings);")
-        columns = [row[1] for row in cursor.fetchall()]
-
-        if "group_size" not in columns:
-            print("Adding group_size to bookings...")
-            cursor.execute("ALTER TABLE bookings ADD COLUMN group_size INTEGER DEFAULT 1;")
-            print("OK")
+        if not table_exists(cursor, "bookings"):
+            print("SKIP: table 'bookings' does not exist yet (will be created by SQLAlchemy).")
         else:
-            print("SKIP: group_size already exists.")
+            cursor.execute("PRAGMA table_info(bookings);")
+            columns = [row[1] for row in cursor.fetchall()]
 
-        # ── employees ───────────────────────────────────────────────────────
-        cursor.execute("PRAGMA table_info(employees);")
-        emp_columns = [row[1] for row in cursor.fetchall()]
-
-        for col, ddl in [
-            ("nextcloud_username", "ALTER TABLE employees ADD COLUMN nextcloud_username TEXT;"),
-            ("max_username",       "ALTER TABLE employees ADD COLUMN max_username TEXT;"),
-            (
-                "notification_preference",
-                "ALTER TABLE employees ADD COLUMN notification_preference VARCHAR DEFAULT 'all';",
-            ),
-        ]:
-            if col not in emp_columns:
-                print(f"Adding {col} to employees...")
-                cursor.execute(ddl)
+            if "group_size" not in columns:
+                print("Adding group_size to bookings...")
+                cursor.execute("ALTER TABLE bookings ADD COLUMN group_size INTEGER DEFAULT 1;")
                 print("OK")
             else:
-                print(f"SKIP: {col} already exists.")
+                print("SKIP: group_size already exists.")
+
+        # ── employees ───────────────────────────────────────────────────────
+        if not table_exists(cursor, "employees"):
+            print("SKIP: table 'employees' does not exist yet (will be created by SQLAlchemy).")
+        else:
+            cursor.execute("PRAGMA table_info(employees);")
+            emp_columns = [row[1] for row in cursor.fetchall()]
+
+            for col, ddl in [
+                ("nextcloud_username", "ALTER TABLE employees ADD COLUMN nextcloud_username TEXT;"),
+                ("max_username",       "ALTER TABLE employees ADD COLUMN max_username TEXT;"),
+                (
+                    "notification_preference",
+                    "ALTER TABLE employees ADD COLUMN notification_preference VARCHAR DEFAULT 'all';",
+                ),
+            ]:
+                if col not in emp_columns:
+                    print(f"Adding {col} to employees...")
+                    cursor.execute(ddl)
+                    print("OK")
+                else:
+                    print(f"SKIP: {col} already exists.")
 
         # ── rooms: clean_status ──────────────────────────────────────────────
-        cursor.execute("PRAGMA table_info(rooms);")
-        room_columns = [row[1] for row in cursor.fetchall()]
-
-        if "clean_status" not in room_columns:
-            print("Adding clean_status to rooms...")
-            cursor.execute(
-                "ALTER TABLE rooms ADD COLUMN clean_status VARCHAR DEFAULT 'clean';"
-            )
-            print("OK: clean_status added.")
+        if not table_exists(cursor, "rooms"):
+            print("SKIP: table 'rooms' does not exist yet (will be created by SQLAlchemy).")
         else:
-            print("SKIP: clean_status already exists.")
+            cursor.execute("PRAGMA table_info(rooms);")
+            room_columns = [row[1] for row in cursor.fetchall()]
+
+            if "clean_status" not in room_columns:
+                print("Adding clean_status to rooms...")
+                cursor.execute(
+                    "ALTER TABLE rooms ADD COLUMN clean_status VARCHAR DEFAULT 'clean';"
+                )
+                print("OK: clean_status added.")
+            else:
+                print("SKIP: clean_status already exists.")
 
         conn.commit()
         print("Migration complete ✓")

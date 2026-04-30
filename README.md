@@ -22,6 +22,222 @@
 - Поиск по номеру
 - Кнопка **«Сохранить»** — массовое сохранение изменений
 - Кнопка **«Отправить в чат»** — формирует отчёт по шаблону и отправляет в NextCloud Talk
+- Доступна всем авторизованным пользователям (admin + moderator)
+
+### 📅 Календарь бронирований
+- Gantt-вид: номера × дни месяца
+- Цветные полосы с именем гостя поверх дней
+- Создание брони двумя кликами по ячейкам
+- Редактирование и удаление броней
+- Навигация по месяцам; кнопка «Сегодня»
+
+### 👥 Гости / 👨‍💼 Сотрудники / ⚙️ Настройки
+- Учёт гостей, ролевой доступ, интеграция NextCloud Talk
+
+---
+
+## 🐳 Деплой через Docker (Рекомендуемый)
+
+### Первый деплой на HTTPS-сервере
+
+> ⚠️ Предполагается, что на сервере уже настроен внешний reverse-proxy (Nginx/Caddy) с SSL-сертификатом, проксирующий `https://hotel.mpda.ru` → `http://127.0.0.1:80`.
+
+**1. Клонируйте репозиторий:**
+```bash
+git clone https://github.com/your-username/hotel2.git
+cd hotel2
+```
+
+**2. Настройте переменные окружения `backend/.env`:**
+```env
+# ОБЯЗАТЕЛЬНО: замените на случайный ключ (минимум 32 символа)
+SECRET_KEY=замените-на-случайный-ключ-минимум-32-символа
+
+# Путь к SQLite БД внутри контейнера (не менять)
+DATABASE_URL=sqlite:////app/data/hotel.db
+
+# Для HTTPS: cookie будет secure=True + samesite=none
+HTTPS_ENABLED=true
+
+# Ваш домен — добавляется в список CORS
+FRONTEND_URL=https://hotel.mpda.ru
+```
+
+**3. Соберите и запустите:**
+```bash
+docker compose up -d --build
+```
+
+**4. Создайте первого администратора:**
+```bash
+docker compose exec backend python create_admin.py
+```
+
+**5. Готово!** Откройте `https://hotel.mpda.ru` в браузере.
+
+> 💾 База данных SQLite хранится в Docker Volume `hotel_data` и **переживает** перезапуск и пересборку контейнеров.
+
+---
+
+### 🔄 Обновление сервера (без потери данных)
+
+```bash
+# Зайти на сервер
+ssh user@hotel.mpda.ru
+
+# Перейти в директорию проекта
+cd /path/to/hotel2
+
+# Получить изменения
+git pull
+
+# Пересобрать и перезапустить (volume НЕ трогаем!)
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+> ❌ **НИКОГДА** не используй `docker compose down -v` — это удалит volume с базой данных!
+
+---
+
+### 📋 Полезные команды
+
+```bash
+# Логи бэкенда (самое важное при отладке)
+docker compose logs backend --tail=100 -f
+
+# Логи фронтенда (nginx)
+docker compose logs frontend --tail=50
+
+# Состояние контейнеров
+docker compose ps
+
+# Перезапустить только бэкенд
+docker compose restart backend
+
+# Создать нового администратора
+docker compose exec backend python create_admin.py
+
+# Бэкап БД
+docker compose exec backend sqlite3 /app/data/hotel.db ".backup /app/data/hotel_backup.db"
+docker compose cp backend:/app/data/hotel_backup.db ./hotel_backup.db
+```
+
+### Открытые порты
+
+| Порт | Сервис | Описание |
+|------|--------|----------|
+| `80` | Nginx → Frontend | Веб-интерфейс + проксирование `/api/*` |
+
+> Порт 8000 (backend) закрыт и доступен **только внутри** Docker-сети.
+
+---
+
+## 💻 Локальный запуск (разработка)
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+
+pip install -r requirements.txt
+python migrate.py
+python create_admin.py
+uvicorn main:app --reload --port 8000
+```
+
+> Swagger UI: http://localhost:8000/docs
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+> Приложение: http://localhost:5173  
+> Vite проксирует `/api/*` → `http://localhost:8000`
+
+---
+
+## 🗂 Структура проекта
+
+```
+hotel2/
+├── docker-compose.yml        ← Оркестрация контейнеров
+├── .dockerignore
+├── README.md
+│
+├── backend/
+│   ├── Dockerfile            ← python:3.12-slim → entrypoint.sh
+│   ├── entrypoint.sh         ← Запуск: mkdir → migrate → uvicorn
+│   ├── .env                  ← Переменные окружения (не в git!)
+│   ├── main.py               ← FastAPI app, CORS, роутеры
+│   ├── models.py             ← SQLAlchemy ORM модели
+│   ├── schemas.py            ← Pydantic схемы (v2)
+│   ├── database.py           ← SQLite подключение
+│   ├── dependencies.py       ← JWT авторизация
+│   ├── migrate.py            ← SQLite миграции (безопасные)
+│   ├── create_admin.py       ← CLI создание администратора
+│   ├── requirements.txt      ← Зафиксированные версии
+│   └── routers/              ← /api/auth, /rooms, /bookings, ...
+│
+└── frontend/
+    ├── Dockerfile            ← node:20 build → nginx:alpine
+    ├── nginx.conf            ← SPA routing + /api/ прокси
+    ├── vite.config.ts
+    └── src/
+        ├── api/client.ts     ← Axios + withCredentials: true
+        ├── contexts/AuthContext.tsx
+        └── pages/            ← RoomsPage, CalendarPage, ...
+```
+
+---
+
+## 🔑 Переменные окружения (`backend/.env`)
+
+| Переменная | Описание | Пример |
+|-----------|----------|--------|
+| `SECRET_KEY` | Ключ подписи JWT (**обязательно сменить!**) | `super-secret-32+chars` |
+| `DATABASE_URL` | Путь к SQLite | `sqlite:////app/data/hotel.db` |
+| `HTTPS_ENABLED` | `true` для HTTPS (secure cookie) | `true` |
+| `FRONTEND_URL` | URL фронтенда для CORS | `https://hotel.mpda.ru` |
+
+> Настройки NextCloud Talk задаются через веб-интерфейс → **Настройки**.
+
+---
+
+## 🛠 Стек технологий
+
+| Слой | Технологии |
+|------|-----------|
+| Backend | Python 3.12, FastAPI 0.110, SQLAlchemy 2, Pydantic v2, SQLite |
+| Auth | python-jose (JWT HS256), bcrypt, HttpOnly Cookie (secure) |
+| Frontend | React 18, TypeScript, Vite, Ant Design 5, Axios |
+| Деплой | Docker, Docker Compose, Nginx (alpine) |
+
+
+## ✨ Функционал
+
+### 🏠 Номерной фонд
+- Просмотр всех номеров с фильтрацией по статусу
+- Управление типами: одноместный, двухместный, люкс
+- Статусы: **свободен**, **занят**, **забронирован**
+- Столбец **Чистота** — показывает актуальный статус уборки каждого номера
+- Клик на статус «Забронирован» — переходит к ближайшей брони в календаре
+- Статистика в карточках-фильтрах
+
+### 🧹 Панель статуса уборки (`/room-status`)
+- Список всех номеров с тумблерами **Чисто / Грязно**
+- Счётчики чистых и грязных номеров в реальном времени
+- Поиск по номеру
+- Кнопка **«Сохранить»** — массовое сохранение изменений
+- Кнопка **«Отправить в чат»** — формирует отчёт по шаблону и отправляет в NextCloud Talk
 - Подсветка изменённых строк, кнопка scroll-to-top
 - Доступна всем авторизованным пользователям (admin + moderator)
 

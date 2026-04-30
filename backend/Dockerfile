@@ -12,5 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Исходный код
 COPY . .
 
-# Запуск: сначала миграция, потом сервер
-CMD ["sh", "-c", "python migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+# Убираем Windows CRLF и делаем entrypoint исполняемым
+RUN sed -i 's/\r//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Запуск через entrypoint (миграции → сервер с логами)
+CMD ["/app/entrypoint.sh"]
