@@ -190,31 +190,6 @@ const LoginPage = () => {
                                 {loading ? "Выполняется вход…" : "Войти"}
                             </button>
                         </form>
-
-                        {/* Credentials hint */}
-                        <div className="mt-6 bg-slate-50 dark:bg-slate-700 rounded-xl p-4 border border-slate-200 dark:border-slate-600">
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-                                Тестовые данные
-                            </p>
-                            <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                                        Логин
-                                    </span>
-                                    <code className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 px-2 py-0.5 rounded-md">
-                                        admin
-                                    </code>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                                        Пароль
-                                    </span>
-                                    <code className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 px-2 py-0.5 rounded-md">
-                                        admin123
-                                    </code>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

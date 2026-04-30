@@ -1,5 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from jose import JWTError
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user, get_db
 from app.core.config import settings
 from app.core.security import (
@@ -10,10 +15,6 @@ from app.core.security import (
 )
 from app.models.user import RefreshToken, User
 from app.schemas.auth import LoginRequest, LoginResponse, UserOut
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
-from jose import JWTError
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -34,9 +35,7 @@ async def login(
         )
     access_token = create_access_token({"sub": user.id})
     refresh_token = create_refresh_token({"sub": user.id})
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expires_at = datetime.now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     db.add(RefreshToken(user_id=user.id, token=refresh_token, expires_at=expires_at))
     await db.commit()
     response.set_cookie(
@@ -75,9 +74,7 @@ async def refresh(
         select(RefreshToken).where(RefreshToken.token == refreshToken)
     )
     stored = result.scalar_one_or_none()
-    if not stored or stored.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
-        timezone.utc
-    ):
+    if not stored or stored.expires_at < datetime.now():
         raise credentials_exception
 
     user_result = await db.execute(select(User).where(User.id == user_id))

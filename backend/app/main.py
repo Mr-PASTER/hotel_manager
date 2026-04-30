@@ -1,14 +1,5 @@
 from contextlib import asynccontextmanager
 
-from app.api import auth, bookings, notifications, rooms, staff
-from app.api import settings as settings_router
-from app.core.config import settings
-from app.core.database import AsyncSessionLocal, Base, engine
-from app.core.security import hash_password
-from app.models.booking import Booking
-from app.models.room import Room
-from app.models.settings import AppSettings, NotificationTemplate, TemplateType
-from app.models.user import RefreshToken, User, UserRole
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +8,15 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import select
+
+from app.api import auth, bookings, notifications, rooms, staff
+from app.api import settings as settings_router
+from app.core.config import settings
+from app.core.database import AsyncSessionLocal, Base, engine
+from app.models.booking import Booking
+from app.models.room import Room
+from app.models.settings import AppSettings, NotificationTemplate, TemplateType
+from app.models.user import RefreshToken, User, UserRole
 
 DEFAULT_TEMPLATES = [
     {
@@ -54,17 +54,6 @@ async def lifespan(app: FastAPI):
 
     # Seed initial data
     async with AsyncSessionLocal() as db:
-        # Seed admin user
-        res = await db.execute(select(User).where(User.login == "admin"))
-        if not res.scalar_one_or_none():
-            admin = User(
-                login="admin",
-                password_hash=hash_password("admin123"),
-                role=UserRole.admin,
-                name="Администратор",
-            )
-            db.add(admin)
-
         # Seed settings singleton
         s_res = await db.execute(select(AppSettings).where(AppSettings.id == 1))
         if not s_res.scalar_one_or_none():
