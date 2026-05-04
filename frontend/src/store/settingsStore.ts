@@ -20,7 +20,8 @@ interface TemplateRaw {
 interface SettingsRaw {
     nextcloud_url: string;
     conversation_token: string;
-    bot_token: string;
+    nc_login: string;
+    nc_password: string;
     auto_notify: boolean;
     updated_at: string;
 }
@@ -38,7 +39,8 @@ function mapTemplate(raw: TemplateRaw): NotificationTemplate {
 const DEFAULT_SETTINGS: Settings = {
     nextcloudUrl: "",
     conversationToken: "",
-    botToken: "",
+    ncLogin: "",
+    ncPassword: "",
     templates: [],
     autoNotify: false,
 };
@@ -69,6 +71,20 @@ interface SettingsState {
         type: TemplateType,
         vars: Record<string, string>,
     ) => string;
+    exportCalendar: (from?: string, to?: string) => Promise<void>;
+    exportDatabase: () => Promise<void>;
+    importDatabase: (file: File) => Promise<{ success: boolean; error?: string }>;
+}
+
+// Helper: add Bearer token to direct fetch calls (required by require_admin)
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const { useAuthStore } = await import("./authStore");
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {
+        ...(options.headers as Record<string, string> ?? {}),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return fetch(url, { ...options, credentials: "include", headers });
 }
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
@@ -86,7 +102,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
                 settings: {
                     nextcloudUrl: raw.nextcloud_url,
                     conversationToken: raw.conversation_token,
-                    botToken: raw.bot_token,
+                    ncLogin: raw.nc_login,
+                    ncPassword: raw.nc_password,
                     autoNotify: raw.auto_notify,
                     templates: tplsRaw.map(mapTemplate),
                 },
@@ -103,7 +120,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
                 body.nextcloud_url = data.nextcloudUrl;
             if (data.conversationToken !== undefined)
                 body.conversation_token = data.conversationToken;
-            if (data.botToken !== undefined) body.bot_token = data.botToken;
+            if (data.ncLogin !== undefined) body.nc_login = data.ncLogin;
+            if (data.ncPassword !== undefined) body.nc_password = data.ncPassword;
             if (data.autoNotify !== undefined)
                 body.auto_notify = data.autoNotify;
             const raw = await api.patch<SettingsRaw>("/api/settings", body);
@@ -112,7 +130,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
                     ...s.settings,
                     nextcloudUrl: raw.nextcloud_url,
                     conversationToken: raw.conversation_token,
-                    botToken: raw.bot_token,
+                    ncLogin: raw.nc_login,
+                    ncPassword: raw.nc_password,
                     autoNotify: raw.auto_notify,
                 },
             }));
@@ -238,5 +257,65 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
             /\{\{(\w+)\}\}/g,
             (_, key) => vars[key] ?? `{{${key}}}`,
         );
+    },
+
+    exportCalendar: async (from?: string, to?: string) => {
+        const params = new URLSearchParams();
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        const query = params.toString() ? `?${params.toString()}` : "";
+        const baseUrl = import.meta.env.VITE_API_URL ?? "";
+        const resp = await authFetch(`${baseUrl}/api/admin/calendar/export${query}`);
+        if (!resp.ok) throw new Error("Ошибка экспорта");
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `calendar${from ? `_from_${from}` : ""}${to ? `_to_${to}` : ""}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    exportDatabase: async () => {
+        const baseUrl = import.meta.env.VITE_API_URL ?? "";
+        const resp = await authFetch(`${baseUrl}/api/admin/db/export`);
+        if (!resp.ok) throw new Error("Ошибка экспорта БД");
+        const blob = await resp.blob();
+        const contentDisp = resp.headers.get("Content-Disposition") ?? "";
+        const match = contentDisp.match(/filename=([^\s;]+)/);
+        const filename = match ? match[1] : "hotel_manager.dump";
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    importDatabase: async (file: File) => {
+        try {
+            const baseUrl = import.meta.env.VITE_API_URL ?? "";
+            const formData = new FormData();
+            formData.append("file", file);
+            const resp = await authFetch(`${baseUrl}/api/admin/db/import`, {
+                method: "POST",
+                body: formData,
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                return {
+                    success: false,
+                    error: err?.detail?.message ?? "Ошибка импорта",
+                };
+            }
+            const data = await resp.json();
+            return { success: true, error: data.message };
+        } catch (e) {
+            return { success: false, error: "Ошибка загрузки файла" };
+        }
     },
 }));

@@ -1,3 +1,4 @@
+import base64
 import re
 
 import httpx
@@ -21,6 +22,11 @@ def _render(template: str, vars: dict) -> str:
     return re.sub(r"\{\{(\w+)\}\}", replacer, template)
 
 
+def _basic_auth_header(login: str, password: str) -> str:
+    creds = base64.b64encode(f"{login}:{password}".encode()).decode()
+    return f"Basic {creds}"
+
+
 async def _send_to_nextcloud(
     app_settings: AppSettings,
     tpl_type: str,
@@ -35,17 +41,17 @@ async def _send_to_nextcloud(
     )
     tpl = tpl_res.scalar_one_or_none()
     message = _render(tpl.template, vars) if tpl else f"[{tpl_type}] " + str(vars)
-    bot_token = decrypt_aes(app_settings.bot_token_encrypted)
+    nc_password = decrypt_aes(app_settings.nc_password_encrypted)
     url = (
-        f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/bot"
-        f"/{app_settings.conversation_token}/message"
+        f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
+        f"/{app_settings.conversation_token}"
     )
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             url,
             json={"message": message},
             headers={
-                "Authorization": f"Bearer {bot_token}",
+                "Authorization": _basic_auth_header(app_settings.nc_login, nc_password),
                 "OCS-APIRequest": "true",
             },
             timeout=10,
@@ -65,7 +71,8 @@ async def send_notification(
         not app_settings
         or not app_settings.nextcloud_url
         or not app_settings.conversation_token
-        or not app_settings.bot_token_encrypted
+        or not app_settings.nc_login
+        or not app_settings.nc_password_encrypted
     ):
         raise HTTPException(
             400,
@@ -76,10 +83,10 @@ async def send_notification(
         )
 
     if body.custom_text and body.type.value == "custom":
-        bot_token = decrypt_aes(app_settings.bot_token_encrypted)
+        nc_password = decrypt_aes(app_settings.nc_password_encrypted)
         url = (
-            f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/bot"
-            f"/{app_settings.conversation_token}/message"
+            f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
+            f"/{app_settings.conversation_token}"
         )
         async with httpx.AsyncClient() as client:
             try:
@@ -87,7 +94,7 @@ async def send_notification(
                     url,
                     json={"message": body.custom_text},
                     headers={
-                        "Authorization": f"Bearer {bot_token}",
+                        "Authorization": _basic_auth_header(app_settings.nc_login, nc_password),
                         "OCS-APIRequest": "true",
                     },
                     timeout=10,

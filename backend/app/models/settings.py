@@ -24,7 +24,10 @@ class AppSettings(Base):
     conversation_token: Mapped[str | None] = mapped_column(
         String, nullable=True, default=""
     )
-    bot_token_encrypted: Mapped[str | None] = mapped_column(
+    nc_login: Mapped[str | None] = mapped_column(
+        String, nullable=True, default=""
+    )
+    nc_password_encrypted: Mapped[str | None] = mapped_column(
         String, nullable=True, default=""
     )
     auto_notify: Mapped[bool] = mapped_column(Boolean, default=False)

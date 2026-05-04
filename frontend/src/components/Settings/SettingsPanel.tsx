@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     MessageSquare,
     Save,
@@ -13,7 +13,12 @@ import {
     Copy,
     Check,
     Link,
-    Key,
+    Database,
+    Download,
+    Upload,
+    FileSpreadsheet,
+    User,
+    Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -262,6 +267,9 @@ export default function SettingsPanel() {
         sendNotification,
         fetchSettings,
         testNotification,
+        exportCalendar,
+        exportDatabase,
+        importDatabase,
     } = useSettingsStore();
 
     // ── Section 1: Nextcloud Talk connection ─────────────────────────────────────
@@ -276,23 +284,34 @@ export default function SettingsPanel() {
     const [localConversationToken, setLocalConversationToken] = useState(
         settings.conversationToken,
     );
-    const [localBotToken, setLocalBotToken] = useState(settings.botToken);
-    const [showBotToken, setShowBotToken] = useState(false);
+    const [localNcLogin, setLocalNcLogin] = useState(settings.ncLogin);
+    const [localNcPassword, setLocalNcPassword] = useState(settings.ncPassword);
+    const [showNcPassword, setShowNcPassword] = useState(false);
     const [copiedToken, setCopiedToken] = useState(false);
     const [localAutoNotify, setLocalAutoNotify] = useState(settings.autoNotify);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
 
+    // DB import/export
+    const [dbExporting, setDbExporting] = useState(false);
+    const [dbImporting, setDbImporting] = useState(false);
+    const [calExporting, setCalExporting] = useState(false);
+    const [calFrom, setCalFrom] = useState("");
+    const [calTo, setCalTo] = useState("");
+    const dbFileRef = useRef<HTMLInputElement>(null);
+
     // Sync local state when settings load from the API
     useEffect(() => {
         setLocalNextcloudUrl(settings.nextcloudUrl);
         setLocalConversationToken(settings.conversationToken);
-        setLocalBotToken(settings.botToken);
+        setLocalNcLogin(settings.ncLogin);
+        setLocalNcPassword(settings.ncPassword);
         setLocalAutoNotify(settings.autoNotify);
     }, [
         settings.nextcloudUrl,
         settings.conversationToken,
-        settings.botToken,
+        settings.ncLogin,
+        settings.ncPassword,
         settings.autoNotify,
     ]);
 
@@ -302,7 +321,8 @@ export default function SettingsPanel() {
         const result = await updateSettings({
             nextcloudUrl: localNextcloudUrl.trim(),
             conversationToken: localConversationToken.trim(),
-            botToken: localBotToken.trim(),
+            ncLogin: localNcLogin.trim(),
+            ncPassword: localNcPassword,
             autoNotify: localAutoNotify,
         });
         setSaving(false);
@@ -324,9 +344,10 @@ export default function SettingsPanel() {
         if (
             !localNextcloudUrl.trim() ||
             !localConversationToken.trim() ||
-            !localBotToken.trim()
+            !localNcLogin.trim() ||
+            !localNcPassword
         ) {
-            toast.error("Заполните URL сервера, токен разговора и токен бота");
+            toast.error("Заполните URL сервера, токен разговора, логин и пароль");
             return;
         }
         // Save current values first so backend uses the new values
@@ -334,7 +355,8 @@ export default function SettingsPanel() {
         await updateSettings({
             nextcloudUrl: localNextcloudUrl.trim(),
             conversationToken: localConversationToken.trim(),
-            botToken: localBotToken.trim(),
+            ncLogin: localNcLogin.trim(),
+            ncPassword: localNcPassword,
             autoNotify: localAutoNotify,
         });
         setSaving(false);
@@ -345,6 +367,45 @@ export default function SettingsPanel() {
             toast.success("Тестовое сообщение отправлено");
         } else {
             toast.error(result.error ?? "Ошибка отправки");
+        }
+    };
+
+    // DB handlers
+    const handleDbExport = async () => {
+        setDbExporting(true);
+        try {
+            await exportDatabase();
+            toast.success("База данных скачана");
+        } catch {
+            toast.error("Ошибка экспорта базы данных");
+        } finally {
+            setDbExporting(false);
+        }
+    };
+
+    const handleDbImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setDbImporting(true);
+        const result = await importDatabase(file);
+        setDbImporting(false);
+        e.target.value = "";
+        if (result.success) {
+            toast.success(result.error ?? "База данных загружена");
+        } else {
+            toast.error(result.error ?? "Ошибка импорта");
+        }
+    };
+
+    const handleCalExport = async () => {
+        setCalExporting(true);
+        try {
+            await exportCalendar(calFrom || undefined, calTo || undefined);
+            toast.success("Календарь скачан");
+        } catch {
+            toast.error("Ошибка экспорта календаря");
+        } finally {
+            setCalExporting(false);
         }
     };
 
@@ -420,7 +481,8 @@ export default function SettingsPanel() {
         if (
             !settings.nextcloudUrl ||
             !settings.conversationToken ||
-            !settings.botToken
+            !settings.ncLogin ||
+            !settings.ncPassword
         ) {
             toast.error(
                 "Nextcloud Talk не настроен. Заполните и сохраните настройки подключения.",
@@ -517,32 +579,48 @@ export default function SettingsPanel() {
                         </p>
                     </div>
 
-                    {/* Bot token */}
+                    {/* NC Login */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                            Токен бота
+                            Логин аккаунта Nextcloud
+                        </label>
+                        <div className="flex gap-2 items-center">
+                            <User className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />
+                            <input
+                                type="text"
+                                value={localNcLogin}
+                                onChange={(e) => setLocalNcLogin(e.target.value)}
+                                placeholder="admin"
+                                autoComplete="username"
+                                className={`${fieldCls} flex-1 min-w-0`}
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
+                            Имя пользователя аккаунта Nextcloud Talk (не бот)
+                        </p>
+                    </div>
+
+                    {/* NC Password */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                            Пароль / App Password
                         </label>
                         <div className="flex gap-2">
                             <input
-                                type={showBotToken ? "text" : "password"}
-                                value={localBotToken}
-                                onChange={(e) =>
-                                    setLocalBotToken(e.target.value)
-                                }
-                                placeholder="bot-secret-token"
+                                type={showNcPassword ? "text" : "password"}
+                                value={localNcPassword}
+                                onChange={(e) => setLocalNcPassword(e.target.value)}
+                                placeholder="•••••••••••"
+                                autoComplete="current-password"
                                 className={`${fieldCls} flex-1 min-w-0`}
                             />
                             <button
                                 type="button"
-                                onClick={() => setShowBotToken((v) => !v)}
-                                title={
-                                    showBotToken
-                                        ? "Скрыть токен"
-                                        : "Показать токен"
-                                }
+                                onClick={() => setShowNcPassword((v) => !v)}
+                                title={showNcPassword ? "Скрыть" : "Показать"}
                                 className="px-3 py-2 border border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl text-gray-600 dark:text-slate-300 transition-colors shrink-0 flex items-center"
                             >
-                                {showBotToken ? (
+                                {showNcPassword ? (
                                     <EyeOff className="w-4 h-4" />
                                 ) : (
                                     <Eye className="w-4 h-4" />
@@ -550,7 +628,7 @@ export default function SettingsPanel() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
-                            Секретный ключ бота из настроек Nextcloud Talk
+                            Рекомендуется создать App Password в настройках Nextcloud
                         </p>
                     </div>
 
@@ -803,12 +881,116 @@ export default function SettingsPanel() {
 
                     {(!settings.nextcloudUrl ||
                         !settings.conversationToken ||
-                        !settings.botToken) && (
+                        !settings.ncLogin ||
+                        !settings.ncPassword) && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                             ⚠️ Nextcloud Talk не настроен — заполните и
                             сохраните настройки подключения выше.
                         </p>
                     )}
+                </div>
+            </SectionCard>
+
+            {/* ══════════════════════════════════════════════════════════════════════
+          SECTION 4 — Calendar Excel export
+      ════════════════════════════════════════════════════════════════════════ */}
+            <SectionCard
+                title="Экспорт календаря"
+                icon={<FileSpreadsheet className="w-5 h-5" />}
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600 dark:text-slate-400">
+                        Скачать все бронирования в формате Excel (.xlsx).
+                        Можно ограничить диапазон дат.
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                        <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">С даты</label>
+                            <input
+                                type="date"
+                                value={calFrom}
+                                onChange={(e) => setCalFrom(e.target.value)}
+                                className={fieldCls}
+                            />
+                        </div>
+                        <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">По дату</label>
+                            <input
+                                type="date"
+                                value={calTo}
+                                onChange={(e) => setCalTo(e.target.value)}
+                                className={fieldCls}
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleCalExport}
+                        disabled={calExporting}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+                    >
+                        {calExporting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Download className="w-4 h-4" />
+                        )}
+                        {calExporting ? "Формирование…" : "Скачать Excel"}
+                    </button>
+                </div>
+            </SectionCard>
+
+            {/* ══════════════════════════════════════════════════════════════════════
+          SECTION 5 — Database backup / restore
+      ════════════════════════════════════════════════════════════════════════ */}
+            <SectionCard
+                title="База данных"
+                icon={<Database className="w-5 h-5" />}
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600 dark:text-slate-400">
+                        Выгрузите базу данных для резервной копии или
+                        редактирования, затем загрузите обратно.
+                    </p>
+
+                    {/* Export */}
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            onClick={handleDbExport}
+                            disabled={dbExporting}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+                        >
+                            {dbExporting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            {dbExporting ? "Выгрузка…" : "Выгрузить БД"}
+                        </button>
+
+                        {/* Import */}
+                        <button
+                            onClick={() => dbFileRef.current?.click()}
+                            disabled={dbImporting}
+                            className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 text-gray-700 dark:text-slate-300 rounded-xl text-sm font-medium transition-colors"
+                        >
+                            {dbImporting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Upload className="w-4 h-4" />
+                            )}
+                            {dbImporting ? "Загрузка…" : "Загрузить БД"}
+                        </button>
+                        <input
+                            ref={dbFileRef}
+                            type="file"
+                            accept=".db,.dump,.sqlite,.sqlite3"
+                            className="hidden"
+                            onChange={handleDbImport}
+                        />
+                    </div>
+
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠️ После загрузки БД рекомендуется перезапустить сервер.
+                    </p>
                 </div>
             </SectionCard>
 

@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.api import auth, bookings, notifications, rooms, staff
 from app.api import settings as settings_router
+from app.api import admin as admin_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.booking import Booking
@@ -62,7 +63,8 @@ async def lifespan(app: FastAPI):
                     id=1,
                     nextcloud_url="",
                     conversation_token="",
-                    bot_token_encrypted="",
+                    nc_login="",
+                    nc_password_encrypted="",
                     auto_notify=False,
                 )
             )
@@ -136,6 +138,7 @@ app.include_router(bookings.router)
 app.include_router(staff.router)
 app.include_router(settings_router.router)
 app.include_router(notifications.router)
+app.include_router(admin_router.router)
 
 
 @app.get("/health", tags=["health"])

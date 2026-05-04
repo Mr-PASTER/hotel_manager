@@ -63,7 +63,8 @@ export interface NotificationTemplate {
 export interface Settings {
     nextcloudUrl: string; // https://nextcloud.example.com
     conversationToken: string; // Токен комнаты/разговора
-    botToken: string; // Секрет/токен бота
+    ncLogin: string; // Логин аккаунта Nextcloud
+    ncPassword: string; // Пароль аккаунта Nextcloud
     templates: NotificationTemplate[];
     autoNotify: boolean;
 }

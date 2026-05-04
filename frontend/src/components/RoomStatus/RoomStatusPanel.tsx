@@ -74,7 +74,8 @@ const RoomStatusPanel: React.FC = () => {
         if (
             !settings.nextcloudUrl ||
             !settings.conversationToken ||
-            !settings.botToken
+            !settings.ncLogin ||
+            !settings.ncPassword
         ) {
             toast.error("Настройте Nextcloud Talk в настройках");
             return;

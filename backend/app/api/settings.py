@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 from app.api.deps import get_db, require_admin
 from app.core.security import decrypt_aes, encrypt_aes
@@ -25,7 +27,8 @@ async def _get_or_create_settings(db: AsyncSession) -> AppSettings:
             id=1,
             nextcloud_url="",
             conversation_token="",
-            bot_token_encrypted="",
+            nc_login="",
+            nc_password_encrypted="",
             auto_notify=False,
         )
         db.add(s)
@@ -35,19 +38,25 @@ async def _get_or_create_settings(db: AsyncSession) -> AppSettings:
 
 
 def _settings_to_out(s: AppSettings) -> dict:
-    bot_token = ""
-    if s.bot_token_encrypted:
+    nc_password = ""
+    if s.nc_password_encrypted:
         try:
-            bot_token = decrypt_aes(s.bot_token_encrypted)
+            nc_password = decrypt_aes(s.nc_password_encrypted)
         except Exception:
-            bot_token = ""
+            nc_password = ""
     return {
         "nextcloud_url": s.nextcloud_url or "",
         "conversation_token": s.conversation_token or "",
-        "bot_token": bot_token,
+        "nc_login": s.nc_login or "",
+        "nc_password": nc_password,
         "auto_notify": s.auto_notify,
         "updated_at": s.updated_at,
     }
+
+
+def _basic_auth_header(login: str, password: str) -> str:
+    creds = base64.b64encode(f"{login}:{password}".encode()).decode()
+    return f"Basic {creds}"
 
 
 @router.get("", response_model=SettingsOut)
@@ -70,8 +79,10 @@ async def update_settings(
         s.nextcloud_url = body.nextcloud_url
     if body.conversation_token is not None:
         s.conversation_token = body.conversation_token
-    if body.bot_token is not None:
-        s.bot_token_encrypted = encrypt_aes(body.bot_token) if body.bot_token else ""
+    if body.nc_login is not None:
+        s.nc_login = body.nc_login
+    if body.nc_password is not None:
+        s.nc_password_encrypted = encrypt_aes(body.nc_password) if body.nc_password else ""
     if body.auto_notify is not None:
         s.auto_notify = body.auto_notify
     await db.commit()
@@ -159,7 +170,12 @@ async def test_notification(
     _: User = Depends(require_admin),
 ):
     s = await _get_or_create_settings(db)
-    if not s.nextcloud_url or not s.conversation_token or not s.bot_token_encrypted:
+    if (
+        not s.nextcloud_url
+        or not s.conversation_token
+        or not s.nc_login
+        or not s.nc_password_encrypted
+    ):
         raise HTTPException(
             400,
             detail={
@@ -167,10 +183,10 @@ async def test_notification(
                 "message": "Nextcloud Talk не настроен",
             },
         )
-    bot_token = decrypt_aes(s.bot_token_encrypted)
+    nc_password = decrypt_aes(s.nc_password_encrypted)
     url = (
-        f"{s.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/bot"
-        f"/{s.conversation_token}/message"
+        f"{s.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
+        f"/{s.conversation_token}"
     )
     async with httpx.AsyncClient() as client:
         try:
@@ -178,7 +194,7 @@ async def test_notification(
                 url,
                 json={"message": "Тестовое уведомление от Hotel Manager"},
                 headers={
-                    "Authorization": f"Bearer {bot_token}",
+                    "Authorization": _basic_auth_header(s.nc_login, nc_password),
                     "OCS-APIRequest": "true",
                     "Content-Type": "application/json",
                 },

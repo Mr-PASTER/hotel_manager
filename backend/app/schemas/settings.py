@@ -7,14 +7,16 @@ from pydantic import BaseModel
 class SettingsUpdate(BaseModel):
     nextcloud_url: str | None = None
     conversation_token: str | None = None
-    bot_token: str | None = None
+    nc_login: str | None = None
+    nc_password: str | None = None
     auto_notify: bool | None = None
 
 
 class SettingsOut(BaseModel):
     nextcloud_url: str
     conversation_token: str
-    bot_token: str  # masked or actual depending on use
+    nc_login: str
+    nc_password: str  # decrypted for display
     auto_notify: bool
     updated_at: datetime
     model_config = {"from_attributes": True}
