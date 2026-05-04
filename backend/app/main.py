@@ -4,15 +4,15 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import select
 
 from app.api import auth, bookings, notifications, rooms, staff
 from app.api import settings as settings_router
 from app.api import admin as admin_router
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.booking import Booking
 from app.models.room import Room
@@ -85,7 +85,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["20/second"])
 
 app = FastAPI(
     title="Hotel Manager API",
