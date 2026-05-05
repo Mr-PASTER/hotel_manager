@@ -687,7 +687,7 @@ export default function SettingsPanel() {
                             {testing ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                                <Key className="w-4 h-4" />
+                                <Lock className="w-4 h-4" />
                             )}
                             {testing ? "Проверка…" : "Тест подключения"}
                         </button>
