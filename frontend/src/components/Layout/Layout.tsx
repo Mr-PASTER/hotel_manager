@@ -12,6 +12,8 @@ import {
     Hotel,
     Sun,
     Moon,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
@@ -46,6 +48,8 @@ interface SidebarContentProps {
     user: User | null;
     visibleItems: NavItem[];
     roleLabel: string;
+    collapsed: boolean;
+    onToggleCollapse: () => void;
     onLinkClick: () => void;
     onLogout: () => void;
 }
@@ -54,6 +58,8 @@ const SidebarContent = ({
     user,
     visibleItems,
     roleLabel,
+    collapsed,
+    onToggleCollapse,
     onLinkClick,
     onLogout,
 }: SidebarContentProps) => {
@@ -66,14 +72,16 @@ const SidebarContent = ({
                 <div className="p-2 bg-sky-500 rounded-xl flex-shrink-0">
                     <Hotel className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                    <span className="text-base font-bold leading-none tracking-wide">
-                        Hotel Manager
-                    </span>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                        Управление отелем
-                    </p>
-                </div>
+                {!collapsed && (
+                    <div>
+                        <span className="text-base font-bold leading-none tracking-wide">
+                            Hotel Manager
+                        </span>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            Управление отелем
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* ── Navigation ── */}
@@ -93,7 +101,9 @@ const SidebarContent = ({
                         }
                     >
                         <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                        {!collapsed && (
+                            <span className="truncate">{item.label}</span>
+                        )}
                     </NavLink>
                 ))}
             </nav>
@@ -109,9 +119,26 @@ const SidebarContent = ({
                     ) : (
                         <Moon className="w-[18px] h-[18px] flex-shrink-0" />
                     )}
-                    <span className="truncate">
-                        {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-                    </span>
+                    {!collapsed && (
+                        <span className="truncate">
+                            {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* ── Collapse toggle (desktop only) ── */}
+            <div className="px-3 pb-2 flex-shrink-0 hidden md:block">
+                <button
+                    onClick={onToggleCollapse}
+                    className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium transition-all duration-150 text-slate-300 hover:bg-slate-700 hover:text-white select-none"
+                >
+                    {collapsed ? (
+                        <ChevronRight className="w-[18px] h-[18px] flex-shrink-0" />
+                    ) : (
+                        <ChevronLeft className="w-[18px] h-[18px] flex-shrink-0" />
+                    )}
+                    {!collapsed && <span className="truncate">Свернуть</span>}
                 </button>
             </div>
 
@@ -121,21 +148,23 @@ const SidebarContent = ({
                     <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center flex-shrink-0 text-sm font-bold uppercase">
                         {(user?.name ?? user?.login ?? "?").charAt(0)}
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate leading-tight">
-                            {user?.name ?? user?.login}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                            {roleLabel}
-                        </p>
-                    </div>
+                    {!collapsed && (
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-white truncate leading-tight">
+                                {user?.name ?? user?.login}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                                {roleLabel}
+                            </p>
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={onLogout}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-red-600/80 hover:text-white rounded-lg transition-colors duration-150"
                 >
                     <LogOut className="w-4 h-4 flex-shrink-0" />
-                    Выйти из системы
+                    {!collapsed && <span>Выйти из системы</span>}
                 </button>
             </div>
         </div>
@@ -146,8 +175,19 @@ const SidebarContent = ({
 
 const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState<boolean>(
+        () => localStorage.getItem("sidebar-collapsed") === "true",
+    );
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+
+    const toggleCollapsed = () => {
+        setCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem("sidebar-collapsed", String(next));
+            return next;
+        });
+    };
 
     const handleLogout = async () => {
         await logout();
@@ -163,11 +203,17 @@ const Layout = () => {
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-slate-900">
             {/* ─── Desktop sidebar (always visible ≥ md) ─────────── */}
-            <aside className="hidden md:flex flex-col w-64 flex-shrink-0 shadow-xl">
+            <aside
+                className={`hidden md:flex flex-col ${
+                    collapsed ? "w-16" : "w-64"
+                } flex-shrink-0 shadow-xl transition-all duration-300`}
+            >
                 <SidebarContent
                     user={user}
                     visibleItems={visibleItems}
                     roleLabel={roleLabel}
+                    collapsed={collapsed}
+                    onToggleCollapse={toggleCollapsed}
                     onLinkClick={closeSidebar}
                     onLogout={handleLogout}
                 />
@@ -204,6 +250,8 @@ const Layout = () => {
                     user={user}
                     visibleItems={visibleItems}
                     roleLabel={roleLabel}
+                    collapsed={false}
+                    onToggleCollapse={toggleCollapsed}
                     onLinkClick={closeSidebar}
                     onLogout={handleLogout}
                 />

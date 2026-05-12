@@ -1,6 +1,10 @@
 import base64
 
 import httpx
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_db, require_admin
 from app.core.security import decrypt_aes, encrypt_aes
 from app.models.settings import AppSettings, NotificationTemplate, TemplateType
@@ -12,9 +16,6 @@ from app.schemas.settings import (
     TemplateOut,
     TemplateUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -50,6 +51,9 @@ def _settings_to_out(s: AppSettings) -> dict:
         "nc_login": s.nc_login or "",
         "nc_password": nc_password,
         "auto_notify": s.auto_notify,
+        "days_forward": s.days_forward,
+        "days_backward": s.days_backward,
+        "auto_floor_enabled": s.auto_floor_enabled,
         "updated_at": s.updated_at,
     }
 
@@ -82,9 +86,17 @@ async def update_settings(
     if body.nc_login is not None:
         s.nc_login = body.nc_login
     if body.nc_password is not None:
-        s.nc_password_encrypted = encrypt_aes(body.nc_password) if body.nc_password else ""
+        s.nc_password_encrypted = (
+            encrypt_aes(body.nc_password) if body.nc_password else ""
+        )
     if body.auto_notify is not None:
         s.auto_notify = body.auto_notify
+    if body.days_forward is not None:
+        s.days_forward = body.days_forward
+    if body.days_backward is not None:
+        s.days_backward = body.days_backward
+    if body.auto_floor_enabled is not None:
+        s.auto_floor_enabled = body.auto_floor_enabled
     await db.commit()
     await db.refresh(s)
     return _settings_to_out(s)

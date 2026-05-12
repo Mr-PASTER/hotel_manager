@@ -2,14 +2,15 @@ import base64
 import re
 
 import httpx
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user, get_db
 from app.core.security import decrypt_aes
 from app.models.settings import AppSettings, NotificationTemplate
 from app.models.user import User
 from app.schemas.notification import NotificationSend
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -32,7 +33,8 @@ async def _send_to_nextcloud(
     tpl_type: str,
     vars: dict,
     db: AsyncSession,
-) -> None:
+) -> dict:
+    """Send notification to all configured chats. Returns {"ok": True, "sent_to": N, "errors": [...]}"""
     tpl_res = await db.execute(
         select(NotificationTemplate)
         .where(NotificationTemplate.type == tpl_type)
@@ -42,21 +44,44 @@ async def _send_to_nextcloud(
     tpl = tpl_res.scalar_one_or_none()
     message = _render(tpl.template, vars) if tpl else f"[{tpl_type}] " + str(vars)
     nc_password = decrypt_aes(app_settings.nc_password_encrypted)
-    url = (
-        f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
-        f"/{app_settings.conversation_token}"
+
+    tokens = (
+        [t.strip() for t in app_settings.conversation_token.split(",") if t.strip()]
+        if app_settings.conversation_token
+        else []
     )
+
+    sent_to = 0
+    errors = []
+
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            url,
-            json={"message": message},
-            headers={
-                "Authorization": _basic_auth_header(app_settings.nc_login, nc_password),
-                "OCS-APIRequest": "true",
-            },
-            timeout=10,
-        )
-        resp.raise_for_status()
+        for token in tokens:
+            url = (
+                f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
+                f"/{token}"
+            )
+            try:
+                resp = await client.post(
+                    url,
+                    json={"message": message},
+                    headers={
+                        "Authorization": _basic_auth_header(
+                            app_settings.nc_login, nc_password
+                        ),
+                        "OCS-APIRequest": "true",
+                    },
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                sent_to += 1
+            except httpx.HTTPError as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send notification to token {token}: {e}")
+                errors.append({"token": token, "error": str(e)})
+
+    return {"ok": True, "sent_to": sent_to, "errors": errors}
 
 
 @router.post("/send")
@@ -84,28 +109,42 @@ async def send_notification(
 
     if body.custom_text and body.type.value == "custom":
         nc_password = decrypt_aes(app_settings.nc_password_encrypted)
-        url = (
-            f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
-            f"/{app_settings.conversation_token}"
+        tokens = (
+            [t.strip() for t in app_settings.conversation_token.split(",") if t.strip()]
+            if app_settings.conversation_token
+            else []
         )
+
+        sent_to = 0
+        errors = []
         async with httpx.AsyncClient() as client:
-            try:
-                resp = await client.post(
-                    url,
-                    json={"message": body.custom_text},
-                    headers={
-                        "Authorization": _basic_auth_header(app_settings.nc_login, nc_password),
-                        "OCS-APIRequest": "true",
-                    },
-                    timeout=10,
+            for token in tokens:
+                url = (
+                    f"{app_settings.nextcloud_url.rstrip('/')}/ocs/v2.php/apps/spreed/api/v1/chat"
+                    f"/{token}"
                 )
-                resp.raise_for_status()
-            except httpx.HTTPError as e:
-                raise HTTPException(
-                    502,
-                    detail={"code": "NEXTCLOUD_ERROR", "message": str(e)},
-                )
-        return {"ok": True}
+                try:
+                    resp = await client.post(
+                        url,
+                        json={"message": body.custom_text},
+                        headers={
+                            "Authorization": _basic_auth_header(
+                                app_settings.nc_login, nc_password
+                            ),
+                            "OCS-APIRequest": "true",
+                        },
+                        timeout=10,
+                    )
+                    resp.raise_for_status()
+                    sent_to += 1
+                except httpx.HTTPError as e:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to send notification to token {token}: {e}")
+                    errors.append({"token": token, "error": str(e)})
+
+        return {"ok": True, "sent_to": sent_to, "errors": errors}
 
     vars = {
         "roomNumber": body.room_number or "",
@@ -113,11 +152,5 @@ async def send_notification(
         "startDate": body.start_date or "",
         "endDate": body.end_date or "",
     }
-    try:
-        await _send_to_nextcloud(app_settings, body.type.value, vars, db)
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            502,
-            detail={"code": "NEXTCLOUD_ERROR", "message": str(e)},
-        )
-    return {"ok": True}
+    result = await _send_to_nextcloud(app_settings, body.type.value, vars, db)
+    return result

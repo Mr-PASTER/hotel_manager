@@ -9,12 +9,12 @@ export interface User {
 }
 
 // ─── Rooms ───────────────────────────────────────────────────────────────────
-export type RoomStatus = "clean" | "dirty";
+export type RoomStatus = "clean" | "dirty" | "booked" | "occupied";
 
 export interface Room {
     id: string;
     number: string;
-    floor: number;
+    floor: number | null;
     comment?: string;
     status: RoomStatus;
 }
@@ -62,11 +62,15 @@ export interface NotificationTemplate {
 // ─── Nextcloud Talk Settings ──────────────────────────────────────────────────
 export interface Settings {
     nextcloudUrl: string; // https://nextcloud.example.com
-    conversationToken: string; // Токен комнаты/разговора
+    conversationToken: string; // Токен комнаты/разговора (deprecated, use conversationTokens)
+    conversationTokens: string[]; // Массив токенов (разбиваем conversationToken по запятой)
     ncLogin: string; // Логин аккаунта Nextcloud
     ncPassword: string; // Пароль аккаунта Nextcloud
     templates: NotificationTemplate[];
     autoNotify: boolean;
+    daysForward: number; // Дней вперёд для календаря
+    daysBackward: number; // Дней назад для календаря
+    autoFloorEnabled: boolean; // Авто-определение этажа
 }
 
 // ─── Chat Notification ────────────────────────────────────────────────────────

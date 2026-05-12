@@ -1,13 +1,14 @@
 import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user, get_db, require_admin
 from app.core.security import decrypt_aes
 from app.models.room import Room
 from app.models.settings import AppSettings
 from app.models.user import User
 from app.schemas.room import RoomCreate, RoomOut, RoomStatusUpdate, RoomUpdate
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -36,7 +37,19 @@ async def create_room(
                 "message": "Номер с таким номером уже существует",
             },
         )
-    room = Room(**body.model_dump())
+
+    # Auto-detect floor from room number
+    floor = body.floor
+    if floor is None:
+        settings_res = await db.execute(select(AppSettings).where(AppSettings.id == 1))
+        app_settings = settings_res.scalar_one_or_none()
+        if app_settings and app_settings.auto_floor_enabled:
+            if len(body.number) >= 2 and body.number[1].isdigit():
+                floor = int(body.number[1])
+
+    room_data = body.model_dump()
+    room_data["floor"] = floor
+    room = Room(**room_data)
     db.add(room)
     await db.commit()
     await db.refresh(room)

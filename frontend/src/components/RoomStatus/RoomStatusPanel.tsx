@@ -3,28 +3,41 @@ import { ArrowUp, Loader2, Send } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRoomStore } from "../../store/roomStore";
 import { useSettingsStore } from "../../store/settingsStore";
-import type { RoomStatus } from "../../types";
+import { useBookingStore } from "../../store/bookingStore";
+import type { Room, RoomStatus, TemplateType } from "../../types";
 
 type FilterTab = "all" | RoomStatus;
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
     clean: "Чисто",
     dirty: "Грязно",
+    booked: "Забронировано",
+    occupied: "Занято",
 };
 
 const STATUS_ICON: Record<RoomStatus, string> = {
     clean: "✅",
     dirty: "🔴",
+    booked: "📅",
+    occupied: "🚪",
 };
 
-const STATUS_BADGE: Record<RoomStatus, string> = ["clean", "dirty"].reduce(
-    (acc, s) => ({
-        ...acc,
-        [s]:
-            s === "clean"
-                ? "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    }),
+const STATUS_BADGE: Record<RoomStatus, string> = (
+    ["clean", "dirty", "booked", "occupied"] as RoomStatus[]
+).reduce(
+    (acc, s) => {
+        const colors: Record<RoomStatus, string> = {
+            clean: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+            dirty: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+            booked: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+            occupied:
+                "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+        };
+        return {
+            ...acc,
+            [s]: `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${colors[s]}`,
+        };
+    },
     {} as Record<RoomStatus, string>,
 );
 
@@ -35,10 +48,16 @@ const RoomStatusPanel: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
     const [isSending, setIsSending] = useState(false);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [sendFilter, setSendFilter] = useState<"all" | RoomStatus>("dirty");
+
+    const { bookings, fetchBookings } = useBookingStore();
 
     useEffect(() => {
         fetchRooms();
     }, [fetchRooms]);
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
     useEffect(() => {
         fetchSettings();
     }, [fetchSettings]);
@@ -54,22 +73,52 @@ const RoomStatusPanel: React.FC = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, []);
 
-    // Counts
-    const cleanCount = rooms.filter((r) => r.status === "clean").length;
-    const dirtyCount = rooms.filter((r) => r.status === "dirty").length;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    function getDisplayStatus(room: Room): RoomStatus {
+        // Приоритет: Грязно > Занят > Забронирован > Чисто
+        if (room.status === "dirty") return "dirty";
+
+        const roomBookings = bookings.filter((b) => b.roomId === room.id);
+        const isOccupied = roomBookings.some(
+            (b) => b.startDate <= today && b.endDate >= today,
+        );
+        if (isOccupied) return "occupied";
+
+        const isBooked = roomBookings.some((b) => b.startDate > today);
+        if (isBooked) return "booked";
+
+        return room.status; // "clean"
+    }
+
+    // Counts (by display status)
+    const cleanCount = rooms.filter(
+        (r) => getDisplayStatus(r) === "clean",
+    ).length;
+    const dirtyCount = rooms.filter(
+        (r) => getDisplayStatus(r) === "dirty",
+    ).length;
+    const bookedCount = rooms.filter(
+        (r) => getDisplayStatus(r) === "booked",
+    ).length;
+    const occupiedCount = rooms.filter(
+        (r) => getDisplayStatus(r) === "occupied",
+    ).length;
 
     const tabCounts: Record<FilterTab, number> = {
         all: rooms.length,
         clean: cleanCount,
         dirty: dirtyCount,
+        booked: bookedCount,
+        occupied: occupiedCount,
     };
 
     const filteredRooms =
         activeFilter === "all"
             ? rooms
-            : rooms.filter((r) => r.status === activeFilter);
+            : rooms.filter((r) => getDisplayStatus(r) === activeFilter);
 
-    // Send all statuses as a single message
+    // Send statuses to chat (with filter)
     const handleSendAll = async () => {
         if (
             !settings.nextcloudUrl ||
@@ -81,10 +130,22 @@ const RoomStatusPanel: React.FC = () => {
             return;
         }
 
-        const lines = rooms.map((room) => {
-            const floorPart = `этаж ${room.floor}`;
-            const icon = room.status === "clean" ? "✅" : "🧹";
-            const label = room.status === "clean" ? "Чисто" : "Грязно";
+        const filteredForSend =
+            sendFilter === "all"
+                ? rooms
+                : rooms.filter((r) => getDisplayStatus(r) === sendFilter);
+
+        if (filteredForSend.length === 0) {
+            toast.error("Нет номеров для отправки");
+            return;
+        }
+
+        const lines = filteredForSend.map((room) => {
+            const floorPart =
+                room.floor != null ? `этаж ${room.floor}` : "этаж —";
+            const displayStatus = getDisplayStatus(room);
+            const icon = STATUS_ICON[displayStatus] ?? "❓";
+            const label = STATUS_LABEL[displayStatus] ?? displayStatus;
             return `• Номер ${room.number} (${floorPart}): ${icon} ${label}`;
         });
 
@@ -92,7 +153,13 @@ const RoomStatusPanel: React.FC = () => {
 
         setIsSending(true);
         try {
-            await sendNotification({ type: "custom", customText });
+            if (sendFilter === "all") {
+                await sendNotification({ type: "custom", customText });
+            } else {
+                const type: TemplateType =
+                    sendFilter === "clean" ? "clean_room" : "dirty_room";
+                await sendNotification({ type, customText });
+            }
             toast.success("Статусы отправлены в чат");
         } catch {
             toast.error("Ошибка при отправке статусов");
@@ -105,28 +172,51 @@ const RoomStatusPanel: React.FC = () => {
         { key: "all", label: "Все" },
         { key: "clean", label: "Чисто" },
         { key: "dirty", label: "Грязно" },
+        { key: "booked", label: "Забронировано" },
+        { key: "occupied", label: "Занято" },
     ];
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
             <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-                {/* Header row: title + send button */}
+                {/* Header row: title + send controls */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                         Статус номеров
                     </h1>
-                    <button
-                        onClick={handleSendAll}
-                        disabled={isSending || rooms.length === 0}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
-                    >
-                        {isSending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <Send className="w-4 h-4" />
-                        )}
-                        {isSending ? "Отправка…" : "Отправить статусы в чат"}
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <select
+                            value={sendFilter}
+                            onChange={(e) =>
+                                setSendFilter(
+                                    e.target.value as "all" | RoomStatus,
+                                )
+                            }
+                            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        >
+                            <option value="dirty">Грязные</option>
+                            <option value="clean">Чистые</option>
+                            <option value="all">Все</option>
+                        </select>
+                        <button
+                            onClick={handleSendAll}
+                            disabled={isSending || rooms.length === 0}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors whitespace-nowrap"
+                        >
+                            {isSending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Send className="w-4 h-4" />
+                            )}
+                            {isSending
+                                ? "Отправка…"
+                                : sendFilter === "all"
+                                  ? "Отправить все"
+                                  : sendFilter === "dirty"
+                                    ? "Отправить (Грязные)"
+                                    : "Отправить (Чистые)"}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Summary strip */}
@@ -224,11 +314,21 @@ const RoomStatusPanel: React.FC = () => {
                                             {/* Статус badge */}
                                             <span
                                                 className={
-                                                    STATUS_BADGE[room.status]
+                                                    STATUS_BADGE[
+                                                        getDisplayStatus(room)
+                                                    ]
                                                 }
                                             >
-                                                {STATUS_ICON[room.status]}{" "}
-                                                {STATUS_LABEL[room.status]}
+                                                {
+                                                    STATUS_ICON[
+                                                        getDisplayStatus(room)
+                                                    ]
+                                                }{" "}
+                                                {
+                                                    STATUS_LABEL[
+                                                        getDisplayStatus(room)
+                                                    ]
+                                                }
                                             </span>
 
                                             {/* Toggle buttons */}
@@ -288,12 +388,26 @@ const RoomStatusPanel: React.FC = () => {
                                                 <span
                                                     className={
                                                         STATUS_BADGE[
-                                                            room.status
+                                                            getDisplayStatus(
+                                                                room,
+                                                            )
                                                         ]
                                                     }
                                                 >
-                                                    {STATUS_ICON[room.status]}{" "}
-                                                    {STATUS_LABEL[room.status]}
+                                                    {
+                                                        STATUS_ICON[
+                                                            getDisplayStatus(
+                                                                room,
+                                                            )
+                                                        ]
+                                                    }{" "}
+                                                    {
+                                                        STATUS_LABEL[
+                                                            getDisplayStatus(
+                                                                room,
+                                                            )
+                                                        ]
+                                                    }
                                                 </span>
                                             </div>
 

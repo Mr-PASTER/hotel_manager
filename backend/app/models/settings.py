@@ -2,10 +2,11 @@ import enum
 import uuid
 from datetime import datetime
 
-from app.core.database import Base
 from sqlalchemy import Boolean, Integer, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.database import Base
 
 
 class TemplateType(str, enum.Enum):
@@ -24,13 +25,14 @@ class AppSettings(Base):
     conversation_token: Mapped[str | None] = mapped_column(
         String, nullable=True, default=""
     )
-    nc_login: Mapped[str | None] = mapped_column(
-        String, nullable=True, default=""
-    )
+    nc_login: Mapped[str | None] = mapped_column(String, nullable=True, default="")
     nc_password_encrypted: Mapped[str | None] = mapped_column(
         String, nullable=True, default=""
     )
     auto_notify: Mapped[bool] = mapped_column(Boolean, default=False)
+    days_forward: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+    days_backward: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+    auto_floor_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
     )

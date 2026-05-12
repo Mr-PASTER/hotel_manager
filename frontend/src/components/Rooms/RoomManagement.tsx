@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Plus, Edit2, Trash2, X, BedDouble } from "lucide-react";
 import { useRoomStore } from "../../store/roomStore";
+import { useSettingsStore } from "../../store/settingsStore";
+import { useBookingStore } from "../../store/bookingStore";
 import type { Room, RoomStatus } from "../../types";
 
 // Status config
@@ -22,6 +24,18 @@ const STATUS_CONFIG: Record<RoomStatus, StatusBadgeConfig> = {
         badgeClass:
             "bg-red-100 text-red-800 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-800",
         dotClass: "bg-red-500",
+    },
+    booked: {
+        label: "Забронировано",
+        badgeClass:
+            "bg-blue-100 text-blue-800 ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-800",
+        dotClass: "bg-blue-500",
+    },
+    occupied: {
+        label: "Занято",
+        badgeClass:
+            "bg-orange-100 text-orange-800 ring-1 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:ring-orange-800",
+        dotClass: "bg-orange-500",
     },
 };
 
@@ -59,6 +73,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
 // RoomCard
 interface RoomCardProps {
     room: Room;
+    displayStatus: RoomStatus;
     isConfirmingDelete: boolean;
     onEdit: (room: Room) => void;
     onDeleteRequest: (room: Room) => void;
@@ -67,6 +82,7 @@ interface RoomCardProps {
 }
 function RoomCard({
     room,
+    displayStatus,
     isConfirmingDelete,
     onEdit,
     onDeleteRequest,
@@ -85,10 +101,10 @@ function RoomCard({
                         </span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 pl-6">
-                        {room.floor} этаж
+                        {room.floor !== null ? `${room.floor} этаж` : "—"}
                     </p>
                 </div>
-                <StatusBadge status={room.status} />
+                <StatusBadge status={displayStatus} />
             </div>
             {room.comment && (
                 <p className="text-sm text-gray-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 line-clamp-2 leading-relaxed">
@@ -154,6 +170,7 @@ function RoomModal({
     onSubmit,
     onClose,
 }: RoomModalProps) {
+    const { settings } = useSettingsStore();
     if (!isOpen) return null;
     const base =
         "w-full border rounded-lg px-3.5 py-2.5 text-sm text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 transition-colors dark:bg-slate-700 dark:border-slate-600";
@@ -223,18 +240,31 @@ function RoomModal({
                             htmlFor="room-floor"
                             className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5"
                         >
-                            Этаж <span className="text-red-500">*</span>
+                            Этаж (необязательно)
                         </label>
                         <input
                             id="room-floor"
                             type="number"
                             value={formData.floor}
                             onChange={(e) => onChange("floor", e.target.value)}
-                            min={1}
+                            min={0}
                             max={99}
-                            placeholder="1"
+                            placeholder={
+                                settings.autoFloorEnabled
+                                    ? "Авто из номера"
+                                    : "—"
+                            }
                             className={errors.floor ? err : ok}
                         />
+                        {settings.autoFloorEnabled &&
+                            formData.number.trim().length >= 2 && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                    💡 Авто-определение:{" "}
+                                    {/^\d$/.test(formData.number.trim()[1])
+                                        ? `этаж ${formData.number.trim()[1]}`
+                                        : "не удалось определить"}
+                                </p>
+                            )}
                         {errors.floor && (
                             <p className="text-xs text-red-600 mt-1">
                                 {errors.floor}
@@ -293,26 +323,60 @@ function RoomModal({
 export default function RoomManagement() {
     const { rooms, addRoom, updateRoom, removeRoom, fetchRooms } =
         useRoomStore();
+    const { settings } = useSettingsStore();
+    const { bookings, fetchBookings } = useBookingStore();
 
     useEffect(() => {
         fetchRooms();
     }, [fetchRooms]);
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    function getDisplayStatus(room: Room): RoomStatus {
+        if (room.status === "dirty") return "dirty";
+        const roomBookings = bookings.filter((b) => b.roomId === room.id);
+        if (
+            roomBookings.some((b) => b.startDate <= today && b.endDate >= today)
+        )
+            return "occupied";
+        if (roomBookings.some((b) => b.startDate > today)) return "booked";
+        return room.status; // clean
+    }
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRoom, setEditingRoom] = useState<Room | null>(null);
     const [formData, setFormData] = useState<RoomFormData>(DEFAULT_FORM);
     const [errors, setErrors] = useState<FormErrors>({});
-    const [selectedFloor, setSelectedFloor] = useState<number | "all">("all");
+    const [selectedFloor, setSelectedFloor] = useState<number | "all" | "null">(
+        "all",
+    );
     const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
     const floors = useMemo(
-        () => [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b),
+        () =>
+            [
+                ...new Set(
+                    rooms
+                        .map((r) => r.floor)
+                        .filter((f): f is number => f !== null),
+                ),
+            ].sort((a, b) => a - b),
+        [rooms],
+    );
+    const hasNullFloor = useMemo(
+        () => rooms.some((r) => r.floor === null),
         [rooms],
     );
     const filteredRooms = useMemo(() => {
-        const base =
-            selectedFloor === "all"
-                ? rooms
-                : rooms.filter((r) => r.floor === selectedFloor);
+        let base = rooms;
+        if (selectedFloor === "null") {
+            base = rooms.filter((r) => r.floor === null);
+        } else if (selectedFloor !== "all") {
+            base = rooms.filter((r) => r.floor === selectedFloor);
+        }
         return [...base].sort((a, b) =>
             a.number.localeCompare(b.number, undefined, { numeric: true }),
         );
@@ -328,7 +392,7 @@ export default function RoomManagement() {
         setEditingRoom(room);
         setFormData({
             number: room.number,
-            floor: String(room.floor),
+            floor: room.floor !== null ? String(room.floor) : "",
             comment: room.comment ?? "",
         });
         setErrors({});
@@ -361,7 +425,11 @@ export default function RoomManagement() {
             e.number = "Комната с таким номером уже существует";
         }
         const fl = parseInt(formData.floor, 10);
-        if (!formData.floor || isNaN(fl) || fl < 1)
+        if (
+            formData.floor &&
+            formData.floor.trim() !== "" &&
+            (isNaN(fl) || fl < 1)
+        )
             e.floor = "Этаж должен быть числом не менее 1";
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -370,13 +438,27 @@ export default function RoomManagement() {
     const handleSubmit = async (ev: React.FormEvent) => {
         ev.preventDefault();
         if (!validate()) return;
-        const payload = {
+        let floorValue: number | null = null;
+        if (formData.floor && formData.floor.trim() !== "") {
+            const parsed = parseInt(formData.floor, 10);
+            if (!isNaN(parsed)) floorValue = parsed;
+        } else if (
+            settings.autoFloorEnabled &&
+            formData.number.trim().length >= 2
+        ) {
+            const digit = formData.number.trim()[1];
+            if (/^\d$/.test(digit)) floorValue = parseInt(digit, 10);
+        }
+
+        const payload: {
+            number: string;
+            floor: number | null;
+            comment?: string;
+        } = {
             number: formData.number.trim(),
-            floor: parseInt(formData.floor, 10),
-            ...(formData.comment.trim()
-                ? { comment: formData.comment.trim() }
-                : {}),
+            floor: floorValue,
         };
+        if (formData.comment.trim()) payload.comment = formData.comment.trim();
         if (editingRoom) {
             const res = await updateRoom(editingRoom.id, payload);
             if (res.success) {
@@ -465,6 +547,29 @@ export default function RoomManagement() {
                             {rooms.length}
                         </span>
                     </button>
+                    {hasNullFloor && (
+                        <button
+                            onClick={() => setSelectedFloor("null")}
+                            className={
+                                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors " +
+                                (selectedFloor === "null"
+                                    ? "bg-brand-600 text-white shadow-sm"
+                                    : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600")
+                            }
+                        >
+                            Без этажа
+                            <span
+                                className={
+                                    "ml-1.5 text-xs font-bold rounded-full px-1.5 py-0.5 " +
+                                    (selectedFloor === "null"
+                                        ? "bg-white/25 text-white"
+                                        : "bg-white dark:bg-slate-600 text-gray-500 dark:text-slate-300")
+                                }
+                            >
+                                {rooms.filter((r) => r.floor === null).length}
+                            </span>
+                        </button>
+                    )}
                     {floors.map((floor) => {
                         const cnt = rooms.filter(
                             (r) => r.floor === floor,
@@ -528,6 +633,7 @@ export default function RoomManagement() {
                         <RoomCard
                             key={room.id}
                             room={room}
+                            displayStatus={getDisplayStatus(room)}
                             isConfirmingDelete={deletingRoomId === room.id}
                             onEdit={openEditModal}
                             onDeleteRequest={handleDeleteRequest}

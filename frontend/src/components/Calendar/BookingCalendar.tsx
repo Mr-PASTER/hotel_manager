@@ -20,13 +20,13 @@ import { ru } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { useRoomStore } from "../../store/roomStore";
 import { useBookingStore } from "../../store/bookingStore";
+import { useSettingsStore } from "../../store/settingsStore";
 import type { Booking, Room } from "../../types";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const CELL_W = 56; // px  (Tailwind w-14)
 const CELL_H = 56; // px  (Tailwind h-14)
-const DAYS_COUNT = 30;
 const ROOM_COL_W = 96; // px  (Tailwind w-24)
 
 // Russian abbreviated day names, index = getDay() (0 = Sun)
@@ -70,9 +70,13 @@ export default function BookingCalendar() {
     const { rooms, fetchRooms } = useRoomStore();
     const { bookings, addBooking, removeBooking, hasConflict, fetchBookings } =
         useBookingStore();
+    const { settings } = useSettingsStore();
+    const daysBackward = settings.daysBackward || 7;
+    const daysForward = settings.daysForward || 7;
+    const DAYS_TOTAL = daysBackward + 1 + daysForward;
 
     const [viewStart, setViewStart] = useState<Date>(() =>
-        startOfDay(new Date()),
+        addDays(startOfDay(new Date()), -daysBackward),
     );
     const [selection, setSelection] = useState<Selection | null>(null);
     const [pendingRange, setPendingRange] = useState<PendingRange | null>(null);
@@ -86,7 +90,7 @@ export default function BookingCalendar() {
     const [deleteConfirm, setDeleteConfirm] = useState(false);
 
     // Derived: array of 30 days
-    const days = Array.from({ length: DAYS_COUNT }, (_, i) =>
+    const days = Array.from({ length: DAYS_TOTAL }, (_, i) =>
         addDays(viewStart, i),
     );
     const today = startOfDay(new Date());
@@ -284,7 +288,7 @@ export default function BookingCalendar() {
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-xl p-0.5">
                     <button
                         onClick={() =>
-                            setViewStart((d) => addDays(d, -DAYS_COUNT))
+                            setViewStart((d) => addDays(d, -DAYS_TOTAL))
                         }
                         className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm text-gray-600 dark:text-slate-300 transition-all"
                         title="Предыдущие 30 дней"
@@ -295,14 +299,14 @@ export default function BookingCalendar() {
                         {format(viewStart, "d MMM", { locale: ru })}
                         {" — "}
                         {format(
-                            addDays(viewStart, DAYS_COUNT - 1),
+                            addDays(viewStart, DAYS_TOTAL - 1),
                             "d MMM yyyy",
                             { locale: ru },
                         )}
                     </span>
                     <button
                         onClick={() =>
-                            setViewStart((d) => addDays(d, DAYS_COUNT))
+                            setViewStart((d) => addDays(d, DAYS_TOTAL))
                         }
                         className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm text-gray-600 dark:text-slate-300 transition-all"
                         title="Следующие 30 дней"
@@ -324,7 +328,11 @@ export default function BookingCalendar() {
 
                 {/* Today button */}
                 <button
-                    onClick={() => setViewStart(startOfDay(new Date()))}
+                    onClick={() =>
+                        setViewStart(
+                            addDays(startOfDay(new Date()), -daysBackward),
+                        )
+                    }
                     className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
                 >
                     Сегодня
@@ -352,7 +360,7 @@ export default function BookingCalendar() {
                     </div>
                 ) : (
                     /* Inner: wide enough to scroll horizontally */
-                    <div style={{ minWidth: ROOM_COL_W + CELL_W * DAYS_COUNT }}>
+                    <div style={{ minWidth: ROOM_COL_W + CELL_W * DAYS_TOTAL }}>
                         {/* ── Date headers row ── */}
                         <div
                             className="flex sticky top-0 z-20 bg-white dark:bg-slate-800 shadow-sm"

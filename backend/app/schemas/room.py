@@ -1,18 +1,19 @@
 from datetime import datetime
 
-from app.models.room import RoomStatus
 from pydantic import BaseModel, field_validator
+
+from app.models.room import RoomStatus
 
 
 class RoomCreate(BaseModel):
     number: str
-    floor: int
+    floor: int | None = None
     comment: str | None = None
 
     @field_validator("floor")
     @classmethod
     def floor_positive(cls, v):
-        if v < 1:
+        if v is not None and v < 1:
             raise ValueError("floor must be >= 1")
         return v
 
@@ -30,7 +31,7 @@ class RoomStatusUpdate(BaseModel):
 class RoomOut(BaseModel):
     id: str
     number: str
-    floor: int
+    floor: int | None = None
     comment: str | None = None
     status: RoomStatus
     created_at: datetime

@@ -24,6 +24,9 @@ interface SettingsRaw {
     nc_password: string;
     auto_notify: boolean;
     updated_at: string;
+    days_forward: number;
+    days_backward: number;
+    auto_floor_enabled: boolean;
 }
 
 function mapTemplate(raw: TemplateRaw): NotificationTemplate {
@@ -39,10 +42,14 @@ function mapTemplate(raw: TemplateRaw): NotificationTemplate {
 const DEFAULT_SETTINGS: Settings = {
     nextcloudUrl: "",
     conversationToken: "",
+    conversationTokens: [],
     ncLogin: "",
     ncPassword: "",
     templates: [],
     autoNotify: false,
+    daysForward: 7,
+    daysBackward: 7,
+    autoFloorEnabled: false,
 };
 
 interface SettingsState {
@@ -73,15 +80,20 @@ interface SettingsState {
     ) => string;
     exportCalendar: (from?: string, to?: string) => Promise<void>;
     exportDatabase: () => Promise<void>;
-    importDatabase: (file: File) => Promise<{ success: boolean; error?: string }>;
+    importDatabase: (
+        file: File,
+    ) => Promise<{ success: boolean; error?: string }>;
 }
 
 // Helper: add Bearer token to direct fetch calls (required by require_admin)
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+async function authFetch(
+    url: string,
+    options: RequestInit = {},
+): Promise<Response> {
     const { useAuthStore } = await import("./authStore");
     const token = useAuthStore.getState().accessToken;
     const headers: Record<string, string> = {
-        ...(options.headers as Record<string, string> ?? {}),
+        ...((options.headers as Record<string, string>) ?? {}),
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return fetch(url, { ...options, credentials: "include", headers });
@@ -102,9 +114,18 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
                 settings: {
                     nextcloudUrl: raw.nextcloud_url,
                     conversationToken: raw.conversation_token,
+                    conversationTokens: raw.conversation_token
+                        ? raw.conversation_token
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean)
+                        : [],
                     ncLogin: raw.nc_login,
                     ncPassword: raw.nc_password,
                     autoNotify: raw.auto_notify,
+                    daysForward: raw.days_forward,
+                    daysBackward: raw.days_backward,
+                    autoFloorEnabled: raw.auto_floor_enabled,
                     templates: tplsRaw.map(mapTemplate),
                 },
             });
@@ -120,19 +141,37 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
                 body.nextcloud_url = data.nextcloudUrl;
             if (data.conversationToken !== undefined)
                 body.conversation_token = data.conversationToken;
+            if (data.conversationTokens !== undefined)
+                body.conversation_token = data.conversationTokens.join(",");
             if (data.ncLogin !== undefined) body.nc_login = data.ncLogin;
-            if (data.ncPassword !== undefined) body.nc_password = data.ncPassword;
+            if (data.ncPassword !== undefined)
+                body.nc_password = data.ncPassword;
             if (data.autoNotify !== undefined)
                 body.auto_notify = data.autoNotify;
+            if (data.daysForward !== undefined)
+                body.days_forward = data.daysForward;
+            if (data.daysBackward !== undefined)
+                body.days_backward = data.daysBackward;
+            if (data.autoFloorEnabled !== undefined)
+                body.auto_floor_enabled = data.autoFloorEnabled;
             const raw = await api.patch<SettingsRaw>("/api/settings", body);
             set((s) => ({
                 settings: {
                     ...s.settings,
                     nextcloudUrl: raw.nextcloud_url,
                     conversationToken: raw.conversation_token,
+                    conversationTokens: raw.conversation_token
+                        ? raw.conversation_token
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean)
+                        : [],
                     ncLogin: raw.nc_login,
                     ncPassword: raw.nc_password,
                     autoNotify: raw.auto_notify,
+                    daysForward: raw.days_forward,
+                    daysBackward: raw.days_backward,
+                    autoFloorEnabled: raw.auto_floor_enabled,
                 },
             }));
             return { success: true };
@@ -265,7 +304,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         if (to) params.set("to", to);
         const query = params.toString() ? `?${params.toString()}` : "";
         const baseUrl = import.meta.env.VITE_API_URL ?? "";
-        const resp = await authFetch(`${baseUrl}/api/admin/calendar/export${query}`);
+        const resp = await authFetch(
+            `${baseUrl}/api/admin/calendar/export${query}`,
+        );
         if (!resp.ok) throw new Error("Ошибка экспорта");
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);

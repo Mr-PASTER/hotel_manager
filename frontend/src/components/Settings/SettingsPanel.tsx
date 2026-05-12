@@ -19,9 +19,13 @@ import {
     FileSpreadsheet,
     User,
     Lock,
+    CalendarDays,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { format, parseISO } from "date-fns";
 import { useSettingsStore } from "../../store/settingsStore";
+import { useRoomStore } from "../../store/roomStore";
+import { useBookingStore } from "../../store/bookingStore";
 import type { NotificationTemplate, TemplateType } from "../../types";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -70,10 +74,14 @@ const VAR_HINTS = [
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function renderPreview(template: string): string {
+function renderPreview(
+    template: string,
+    vars?: Record<string, string>,
+): string {
+    const v = vars ?? SAMPLE_VARS;
     return template.replace(
         /\{\{(\w+)\}\}/g,
-        (_, key) => SAMPLE_VARS[key] ?? `{{${key}}}`,
+        (_, key) => v[key] ?? `{{${key}}}`,
     );
 }
 
@@ -289,8 +297,20 @@ export default function SettingsPanel() {
     const [showNcPassword, setShowNcPassword] = useState(false);
     const [copiedToken, setCopiedToken] = useState(false);
     const [localAutoNotify, setLocalAutoNotify] = useState(settings.autoNotify);
+    const [localAutoFloorEnabled, setLocalAutoFloorEnabled] = useState(
+        settings.autoFloorEnabled,
+    );
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
+
+    // Calendar settings
+    const [localDaysForward, setLocalDaysForward] = useState(
+        settings.daysForward,
+    );
+    const [localDaysBackward, setLocalDaysBackward] = useState(
+        settings.daysBackward,
+    );
+    const [savingCalendar, setSavingCalendar] = useState(false);
 
     // DB import/export
     const [dbExporting, setDbExporting] = useState(false);
@@ -307,12 +327,18 @@ export default function SettingsPanel() {
         setLocalNcLogin(settings.ncLogin);
         setLocalNcPassword(settings.ncPassword);
         setLocalAutoNotify(settings.autoNotify);
+        setLocalAutoFloorEnabled(settings.autoFloorEnabled);
+        setLocalDaysForward(settings.daysForward);
+        setLocalDaysBackward(settings.daysBackward);
     }, [
         settings.nextcloudUrl,
         settings.conversationToken,
         settings.ncLogin,
         settings.ncPassword,
         settings.autoNotify,
+        settings.autoFloorEnabled,
+        settings.daysForward,
+        settings.daysBackward,
     ]);
 
     const handleSaveSettings = async (e: React.FormEvent) => {
@@ -324,6 +350,7 @@ export default function SettingsPanel() {
             ncLogin: localNcLogin.trim(),
             ncPassword: localNcPassword,
             autoNotify: localAutoNotify,
+            autoFloorEnabled: localAutoFloorEnabled,
         });
         setSaving(false);
         if (result.success) toast.success("Настройки сохранены");
@@ -340,14 +367,21 @@ export default function SettingsPanel() {
         }
     };
 
+    const tokens = localConversationToken
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
     const handleTestConnection = async () => {
         if (
             !localNextcloudUrl.trim() ||
-            !localConversationToken.trim() ||
+            tokens.length === 0 ||
             !localNcLogin.trim() ||
             !localNcPassword
         ) {
-            toast.error("Заполните URL сервера, токен разговора, логин и пароль");
+            toast.error(
+                "Заполните URL сервера, хотя бы один токен разговора, логин и пароль",
+            );
             return;
         }
         // Save current values first so backend uses the new values
@@ -358,6 +392,7 @@ export default function SettingsPanel() {
             ncLogin: localNcLogin.trim(),
             ncPassword: localNcPassword,
             autoNotify: localAutoNotify,
+            autoFloorEnabled: localAutoFloorEnabled,
         });
         setSaving(false);
         setTesting(true);
@@ -368,6 +403,17 @@ export default function SettingsPanel() {
         } else {
             toast.error(result.error ?? "Ошибка отправки");
         }
+    };
+
+    const handleSaveCalendarSettings = async () => {
+        setSavingCalendar(true);
+        const result = await updateSettings({
+            daysForward: localDaysForward,
+            daysBackward: localDaysBackward,
+        });
+        setSavingCalendar(false);
+        if (result.success) toast.success("Настройки календаря сохранены");
+        else toast.error(result.error ?? "Ошибка сохранения");
     };
 
     // DB handlers
@@ -477,6 +523,23 @@ export default function SettingsPanel() {
 
     const testTemplate = settings.templates.find((t) => t.type === testType);
 
+    // Real data for preview
+    const { rooms } = useRoomStore();
+    const { bookings } = useBookingStore();
+
+    const previewVars = {
+        roomNumber: rooms[0]?.number ?? SAMPLE_VARS.roomNumber,
+        guestName: bookings[0]?.guestName ?? SAMPLE_VARS.guestName,
+        startDate: bookings[0]?.startDate
+            ? format(parseISO(bookings[0].startDate), "dd.MM.yyyy")
+            : SAMPLE_VARS.startDate,
+        endDate: bookings[0]?.endDate
+            ? format(parseISO(bookings[0].endDate), "dd.MM.yyyy")
+            : SAMPLE_VARS.endDate,
+    };
+
+    const hasRealData = rooms.length > 0 || bookings.length > 0;
+
     const handleSendTest = async () => {
         if (
             !settings.nextcloudUrl ||
@@ -492,10 +555,10 @@ export default function SettingsPanel() {
         setTestSending(true);
         const result = await sendNotification({
             type: testType,
-            roomNumber: SAMPLE_VARS.roomNumber,
-            guestName: SAMPLE_VARS.guestName,
-            startDate: SAMPLE_VARS.startDate,
-            endDate: SAMPLE_VARS.endDate,
+            roomNumber: previewVars.roomNumber,
+            guestName: previewVars.guestName,
+            startDate: previewVars.startDate,
+            endDate: previewVars.endDate,
         });
         setTestSending(false);
         if (result.success) {
@@ -575,8 +638,15 @@ export default function SettingsPanel() {
                         <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
                             Найдите в URL комнаты:{" "}
                             <span className="font-mono">/call/ТУТ</span> или в
-                            настройках разговора
+                            настройках разговора. Несколько токенов можно
+                            указать через запятую
                         </p>
+                        {settings.conversationTokens.length > 1 && (
+                            <p className="text-xs text-sky-600 dark:text-sky-400 mt-0.5 font-medium">
+                                Будет отправлено в{" "}
+                                {settings.conversationTokens.length} чатов
+                            </p>
+                        )}
                     </div>
 
                     {/* NC Login */}
@@ -589,7 +659,9 @@ export default function SettingsPanel() {
                             <input
                                 type="text"
                                 value={localNcLogin}
-                                onChange={(e) => setLocalNcLogin(e.target.value)}
+                                onChange={(e) =>
+                                    setLocalNcLogin(e.target.value)
+                                }
                                 placeholder="admin"
                                 autoComplete="username"
                                 className={`${fieldCls} flex-1 min-w-0`}
@@ -609,7 +681,9 @@ export default function SettingsPanel() {
                             <input
                                 type={showNcPassword ? "text" : "password"}
                                 value={localNcPassword}
-                                onChange={(e) => setLocalNcPassword(e.target.value)}
+                                onChange={(e) =>
+                                    setLocalNcPassword(e.target.value)
+                                }
                                 placeholder="•••••••••••"
                                 autoComplete="current-password"
                                 className={`${fieldCls} flex-1 min-w-0`}
@@ -628,7 +702,8 @@ export default function SettingsPanel() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
-                            Рекомендуется создать App Password в настройках Nextcloud
+                            Рекомендуется создать App Password в настройках
+                            Nextcloud
                         </p>
                     </div>
 
@@ -657,6 +732,38 @@ export default function SettingsPanel() {
                             <span
                                 className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform ${
                                     localAutoNotify
+                                        ? "translate-x-5"
+                                        : "translate-x-0"
+                                }`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* Auto-floor toggle */}
+                    <div className="flex items-center justify-between gap-4 py-1 border-t border-gray-100 dark:border-slate-700 pt-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                                Авто-определение этажа
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                                Извлекать этаж из второй цифры номера комнаты
+                                (например, 320 → 2 этаж)
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={localAutoFloorEnabled}
+                            onClick={() => setLocalAutoFloorEnabled((v) => !v)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 ${
+                                localAutoFloorEnabled
+                                    ? "bg-sky-500"
+                                    : "bg-gray-200 dark:bg-slate-600"
+                            }`}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform ${
+                                    localAutoFloorEnabled
                                         ? "translate-x-5"
                                         : "translate-x-0"
                                 }`}
@@ -693,6 +800,77 @@ export default function SettingsPanel() {
                         </button>
                     </div>
                 </form>
+            </SectionCard>
+
+            {/* ══════════════════════════════════════════════════════════════════════
+          SECTION — Calendar settings
+      ════════════════════════════════════════════════════════════════════════ */}
+            <SectionCard
+                title="📅 Календарь"
+                icon={<CalendarDays className="w-5 h-5" />}
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600 dark:text-slate-400">
+                        Настройка диапазона отображения календаря.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                                Дней назад
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                max={90}
+                                value={localDaysBackward}
+                                onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (!isNaN(v) && v >= 0)
+                                        setLocalDaysBackward(v);
+                                }}
+                                className={fieldCls}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                                Сколько дней до сегодня показывать (по умолчанию
+                                7)
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                                Дней вперёд
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={90}
+                                value={localDaysForward}
+                                onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (!isNaN(v) && v >= 1)
+                                        setLocalDaysForward(v);
+                                }}
+                                className={fieldCls}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                                Сколько дней вперёд от сегодня показывать (по
+                                умолчанию 7)
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleSaveCalendarSettings}
+                        disabled={savingCalendar}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors"
+                    >
+                        {savingCalendar ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Save className="w-4 h-4" />
+                        )}
+                        {savingCalendar ? "Сохранение…" : "Сохранить"}
+                    </button>
+                </div>
             </SectionCard>
 
             {/* ══════════════════════════════════════════════════════════════════════
@@ -837,13 +1015,30 @@ export default function SettingsPanel() {
 
                     {/* Preview */}
                     <div>
-                        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
-                            <Eye className="w-3.5 h-3.5" /> Предпросмотр
-                            (тестовые данные)
+                        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1.5 flex items-center gap-2">
+                            <Eye className="w-3.5 h-3.5" /> Предпросмотр{" "}
+                            {hasRealData ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                    Данные из системы
+                                </span>
+                            ) : (
+                                <span className="text-gray-400 dark:text-slate-500">
+                                    (тестовые данные)
+                                </span>
+                            )}
                         </p>
+                        {!hasRealData && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                                ⚠️ Нет данных для предпросмотра — используются
+                                тестовые значения
+                            </p>
+                        )}
                         {testTemplate ? (
                             <div className="bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-slate-200 whitespace-pre-wrap break-words min-h-[2.5rem]">
-                                {renderPreview(testTemplate.template)}
+                                {renderPreview(
+                                    testTemplate.template,
+                                    previewVars,
+                                )}
                             </div>
                         ) : (
                             <div className="bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm text-gray-400 dark:text-slate-500 italic">
@@ -852,9 +1047,9 @@ export default function SettingsPanel() {
                         )}
                     </div>
 
-                    {/* Sample vars legend */}
+                    {/* Vars legend */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        {Object.entries(SAMPLE_VARS).map(([k, v]) => (
+                        {Object.entries(previewVars).map(([k, v]) => (
                             <p
                                 key={k}
                                 className="text-xs text-gray-400 dark:text-slate-500"
@@ -900,12 +1095,14 @@ export default function SettingsPanel() {
             >
                 <div className="space-y-4">
                     <p className="text-sm text-gray-600 dark:text-slate-400">
-                        Скачать все бронирования в формате Excel (.xlsx).
-                        Можно ограничить диапазон дат.
+                        Скачать все бронирования в формате Excel (.xlsx). Можно
+                        ограничить диапазон дат.
                     </p>
                     <div className="flex flex-wrap gap-4">
                         <div className="flex-1 min-w-[140px]">
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">С даты</label>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">
+                                С даты
+                            </label>
                             <input
                                 type="date"
                                 value={calFrom}
@@ -914,7 +1111,9 @@ export default function SettingsPanel() {
                             />
                         </div>
                         <div className="flex-1 min-w-[140px]">
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">По дату</label>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">
+                                По дату
+                            </label>
                             <input
                                 type="date"
                                 value={calTo}

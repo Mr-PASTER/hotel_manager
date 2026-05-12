@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from app.models.settings import TemplateType
 from pydantic import BaseModel
+
+from app.models.settings import TemplateType
 
 
 class SettingsUpdate(BaseModel):
@@ -10,6 +11,9 @@ class SettingsUpdate(BaseModel):
     nc_login: str | None = None
     nc_password: str | None = None
     auto_notify: bool | None = None
+    days_forward: int | None = None
+    days_backward: int | None = None
+    auto_floor_enabled: bool | None = None
 
 
 class SettingsOut(BaseModel):
@@ -18,6 +22,9 @@ class SettingsOut(BaseModel):
     nc_login: str
     nc_password: str  # decrypted for display
     auto_notify: bool
+    days_forward: int
+    days_backward: int
+    auto_floor_enabled: bool
     updated_at: datetime
     model_config = {"from_attributes": True}
 

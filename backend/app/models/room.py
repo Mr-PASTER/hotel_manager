@@ -2,10 +2,11 @@ import enum
 import uuid
 from datetime import datetime
 
-from app.core.database import Base
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.database import Base
 
 
 class RoomStatus(str, enum.Enum):
@@ -20,7 +21,7 @@ class Room(Base):
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
     number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    floor: Mapped[int] = mapped_column(Integer, nullable=False)
+    floor: Mapped[int | None] = mapped_column(Integer, nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[RoomStatus] = mapped_column(
         SAEnum(RoomStatus), default=RoomStatus.clean, nullable=False
